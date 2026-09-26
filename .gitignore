@@ -1,0 +1,24 @@
+# A raiz do repositório contém somente os quatro módulos e estes arquivos de controle.
+/*
+!/.gitignore
+!/README.md
+!/alignment/
+!/raspberry/
+!/server/
+!/webApp/
+
+# Dependências e artefatos locais de desenvolvimento
+**/.venv/
+**/venv/
+**/node_modules/
+**/.next/
+**/__pycache__/
+**/*.py[cod]
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dados gerados durante captura e execução; as matrizes de calibração
+# alignment/alignment.npy e raspberry/alignment.npy permanecem versionadas.
+/raspberry/data/
