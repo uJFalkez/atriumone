@@ -1,4 +1,4 @@
-# Atrium One
+# AtriumOne
 
 Projeto de TCC para captura de imagens RGB e NIR, processamento de NDVI e
 visualização de operações. O repositório reúne os quatro módulos que compõem a
