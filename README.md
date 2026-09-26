@@ -99,10 +99,3 @@ npm run dev
 
 Para iniciar uma versão de produção, use `npm run build` e depois `npm start`.
 
-## Conteúdo versionado
-
-O repositório contém somente `alignment/`, `raspberry/`, `server/` e `webApp/`,
-além deste README e do `.gitignore`. Pastas auxiliares que existam localmente na
-raiz, dependências instaladas, caches, arquivos de ambiente e dados gerados em
-execução são ignorados. As matrizes de calibração necessárias à pipeline são
-mantidas.
