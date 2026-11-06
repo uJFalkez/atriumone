@@ -2,3 +2,4 @@ Flask>=3.0,<4.0
 waitress>=3.0,<4.0
 numpy>=1.26
 opencv-python-headless>=4.8
+requests>=2.31  # usado pelo módulo simulado (tools/mock_module.py)
