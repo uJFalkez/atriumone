@@ -117,7 +117,9 @@ Depois de `captures_enabled_at`:
       qualquer posição;
    3. captura RGB e NIR **ao mesmo tempo** (por exemplo, uma thread por
       câmera, descartando antes os quadros antigos do buffer da câmera USB)
-      e grava `rgb.jpg` e `nir.jpg` em resolução cheia (JPEG, qualidade ≥ 90);
+      e grava `rgb.jpg` e `nir.jpg` (JPEG, qualidade ≥ 90). A resolução pode
+      ser reduzida para aliviar o Pi, desde que seja o **quadro inteiro
+      reescalado** (binning ou resize), nunca um recorte do sensor;
    4. escreve o `metadata.json` exatamente como no contrato (seção 3), com
       `schema: 2` e todos os campos obrigatórios (`null` se faltar leitura);
    5. grava tudo numa pasta temporária e **renomeia atomicamente** para a fila
@@ -231,7 +233,7 @@ O Pi 3B **não tem relógio de hardware**.
 | Aquecimento | 120 s |
 | Intervalo mínimo entre fotos | 10 s |
 | Histórico de posições | 1 a 5 Hz |
-| Imagens | RGB 3264×2448 (USB), NIR 3280×2464 (CSI), JPEG cru |
+| Imagens | Sensores: RGB 3264×2448 (USB), NIR 3280×2464 (CSI). Podem ir reduzidas, sempre com o campo de visão inteiro (ex.: 1632×1224 e 1640×1232). |
 
 ## 6. Critérios de aceitação
 

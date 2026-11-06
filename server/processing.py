@@ -87,12 +87,32 @@ def warp_matrix():
     return _warp_matrix
 
 
+def matrix_for(width, height):
+    """Matriz de alinhamento convertida para a resolução da foto.
+
+    alignment.npy foi calibrada com a RGB em config.ALIGNMENT_RGB_SIZE. Com a
+    foto em outra resolução (mesmo campo de visão, só reescalada), as
+    coordenadas mudam por S = diag(sx, sy): a parte linear vira S·A·S⁻¹ e o
+    deslocamento vira S·t.
+    """
+    cal_w, cal_h = config.ALIGNMENT_RGB_SIZE
+    sx, sy = width / cal_w, height / cal_h
+    if sx == 1 and sy == 1:
+        return warp_matrix()
+    a = warp_matrix().astype(np.float64)
+    scaled = np.array([
+        [a[0, 0], a[0, 1] * sx / sy, a[0, 2] * sx],
+        [a[1, 0] * sy / sx, a[1, 1], a[1, 2] * sy],
+    ])
+    return scaled.astype(np.float32)
+
+
 def align_nir(nir, width, height):
     if nir.shape[:2] != (height, width):
         nir = cv2.resize(nir, (width, height), interpolation=cv2.INTER_LINEAR)
     return cv2.warpAffine(
         nir,
-        warp_matrix(),
+        matrix_for(width, height),
         (width, height),
         flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
         borderMode=cv2.BORDER_CONSTANT,
@@ -110,13 +130,13 @@ def crop_box(width, height, nir_size=None):
     alinhamento e encolhe a caixa envolvente até não restar pixel inválido
     nas bordas. Depende só da matriz e das resoluções, então é cacheado.
     """
-    key = (width, height, nir_size, warp_matrix().tobytes())
+    key = (width, height, nir_size, matrix_for(width, height).tobytes())
     if key in _crop_cache:
         return _crop_cache[key]
 
     factor = 8  # resolução reduzida: suficiente e rápido
     w, h = max(1, width // factor), max(1, height // factor)
-    matrix = warp_matrix().copy()
+    matrix = matrix_for(width, height).copy()
     matrix[:, 2] /= factor
     # O NIR é redimensionado para o tamanho da RGB antes do warp, então um
     # quadro todo válido no tamanho da RGB representa o NIR inteiro.

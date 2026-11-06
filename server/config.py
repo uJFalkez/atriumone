@@ -18,6 +18,11 @@ ALIGNMENT_PATH = Path(
 
 CROP_MARGIN_PX = 8
 
+# Resolução da RGB usada para calcular alignment.npy (alignment/align.py).
+# Fotos em outra resolução (mesmo campo de visão, reescaladas) têm a matriz
+# convertida automaticamente. Atualize se recalibrar em outra resolução.
+ALIGNMENT_RGB_SIZE = (3264, 2448)
+
 # Pixels com NIR + R abaixo disso são escuros demais para um NDVI confiável.
 NDVI_MIN_SIGNAL = 20
 

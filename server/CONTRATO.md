@@ -138,9 +138,16 @@ forma independente, e o dashboard a liga à missão pelo `mission_id` do
 | Campo | Tipo | Conteúdo |
 |---|---|---|
 | `entry_id` | texto | UUID da captura. É o nome da pasta local e o `id` do metadata. |
-| `rgb` | arquivo | `rgb.jpg`, quadro RGB **cru**, sem recorte nem alinhamento. |
+| `rgb` | arquivo | `rgb.jpg`, quadro RGB **cru**, sem recorte nem alinhamento (ver resolução abaixo). |
 | `nir` | arquivo | `nir.jpg`, quadro NoIR **cru**. |
 | `metadata` | arquivo | `metadata.json` (seção 3). |
+
+A resolução pode ser reduzida, desde que seja o **quadro inteiro
+reescalado**, sem recorte. Pode ser um modo do sensor que cubra o campo de
+visão completo (binning) ou um redimensionamento por software. Modos que
+cortam o sensor mudam o campo de visão e invalidam o alinhamento. A estação
+lê o tamanho de cada imagem e converte a matriz de alinhamento
+automaticamente; RGB e NIR podem ter tamanhos diferentes entre si.
 
 Respostas:
 - `201 {"entry_id", "status": "created"}`: recebida.
