@@ -119,7 +119,10 @@ Depois de `captures_enabled_at`:
       qualquer posição;
    3. captura RGB e NIR **ao mesmo tempo** (por exemplo, uma thread por
       câmera, descartando antes os quadros antigos do buffer da câmera USB)
-      e grava `rgb.jpg` e `nir.jpg` (JPEG, qualidade ≥ 90). A resolução pode
+      e grava `rgb.jpg` e `nir.jpg`. A NIR é codificada em JPEG com
+      qualidade ≥ 90. A RGB vai como o MJPEG que a câmera produz, **sem
+      recodificar** (a Arducam não tem controle de qualidade, e recodificar
+      só perderia mais informação). A resolução pode
       ser reduzida para aliviar o Pi, desde que seja o **quadro inteiro**:
       de preferência um modo nativo da câmera que cubra o sensor todo
       (binning); só quando esse modo não existir, redimensionar por software
