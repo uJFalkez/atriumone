@@ -2,6 +2,7 @@
 /*
 !/.gitignore
 !/README.md
+!/PIPELINE.md
 !/alignment/
 !/raspberry/
 !/server/
@@ -22,3 +23,6 @@
 # Dados gerados durante captura e execução; as matrizes de calibração
 # alignment/alignment.npy e raspberry/alignment.npy permanecem versionadas.
 /raspberry/data/
+
+# Dados do módulo simulado (server/tools/mock_module.py)
+/server/tools/.mock_data/

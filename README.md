@@ -1,83 +1,63 @@
 # Atrium One
 
-Projeto de TCC para captura de imagens RGB e NIR, processamento de NDVI e
-visualização de operações. O repositório reúne os quatro módulos que compõem a
-pipeline: `raspberry`, `alignment`, `server` e `webApp`.
+Projeto de TCC para captura de imagens RGB e NIR com posição e orientação,
+cálculo de NDVI, detecção de focos de NDVI baixo e visualização das missões
+num mapa de satélite. O repositório reúne quatro módulos: `raspberry`,
+`alignment`, `server` e `webApp`.
+
+O contrato entre o módulo e a estação (API, estados da missão e formato do
+`metadata.json`) está em [`server/CONTRATO.md`](server/CONTRATO.md).
+O passo a passo do que o módulo deve fazer, e do que não deve, está em
+[`PIPELINE.md`](PIPELINE.md).
 
 ## Pipeline
 
-1. **Captura — `raspberry/`:** a aplicação recebe uma solicitação de captura,
-   obtém imagens das câmeras RGB e NIR e aplica o processamento local.
-2. **Alinhamento e NDVI — `raspberry/` com calibração de `alignment/`:** a imagem
-   NIR é alinhada à RGB usando a matriz de transformação; em seguida o NDVI é
-   calculado, as imagens são recortadas e os arquivos da operação são preparados.
-3. **Envio — `raspberry/`:** o uploader envia cada operação ao servidor. Se o
-   servidor estiver indisponível, as capturas permanecem na fila local para uma
-   nova tentativa.
-4. **Armazenamento — `server/`:** a API valida e recebe `rgb.jpg`,
-   `metadata.json` e `ndvi.npy`, organizando-os em uma pasta identificada por
-   UUID.
-5. **Visualização — `webApp/`:** a aplicação web lê as operações armazenadas,
-   lista os registros e apresenta imagem RGB, visualização do NDVI e metadados.
+1. **Comando — `webApp/`:** o dashboard consulta o módulo por polling. Com o
+   módulo conectado, ele libera os botões **Calibrar sensores** e **Iniciar
+   missão**.
+2. **Missão — módulo:** o módulo zera o referencial na estação. Após 2 min de
+   estabilização, tira uma foto (RGB + NIR crus + `metadata.json`) a cada
+   10 s, sempre que estiver estável. Ao voltar à estação (perto do ponto
+   inicial, baixo, parado e alcançando a API da estação), reporta
+   `ready_to_finish` e o dashboard libera **Finalizar missão**.
+3. **Envio — módulo:** ao finalizar, o módulo registra a missão na estação
+   (`POST /mission`, com o histórico de posições) e envia cada captura para
+   `POST /entry`. A cópia local é apagada após cada confirmação.
+4. **Processamento — `server/`:** a estação grava os arquivos crus de forma
+   atômica e então:
+   - alinha o NIR à RGB (`alignment/alignment.npy`);
+   - calcula o NDVI;
+   - detecta focos pequenos de NDVI baixo;
+   - projeta a pegada da foto e os focos no solo;
+   - gera as prévias para o dashboard.
+5. **Visualização — `webApp/`:** o mapa de satélite mostra as fotos
+   projetadas (NDVI ou RGB), o trajeto e os focos. Os painéis trazem
+   comparação RGB/NDVI, histograma, telemetria e o resumo de cada missão.
 
 ## Módulos
 
-### `raspberry/` — captura e processamento embarcado
+### `raspberry/` — módulo embarcado
 
-Aplicação destinada ao Raspberry Pi. `app.py` expõe os endpoints de saúde e
-captura; `camera.py` controla as câmeras; `capture.py` orquestra a captura,
-processamento e gravação; `processing.py` realiza alinhamento NIR, cálculo de
-NDVI e recorte. `uploader.py` envia as operações pendentes para a API em
-`server/`, e `trigger.py` é um cliente simples para disparar uma captura.
-
-`config.py` reúne caminhos, parâmetros das câmeras e processamento, além do
-endereço do servidor. `alignment.npy` é a matriz de calibração usada pelo
-processamento. Os dados temporários e a fila de capturas são gerados em
-`raspberry/data/` e não são versionados.
-
-Inicialização da API de captura e do uploader em dois terminais. No primeiro:
-
-```bash
-cd raspberry
-python3 -m uvicorn app:app --host 0.0.0.0 --port 8000
-```
-
-No segundo:
-
-```bash
-cd raspberry
-python3 uploader.py
-```
-
-Para disparar uma captura a partir do Raspberry Pi:
-
-```bash
-cd raspberry
-python3 trigger.py
-```
+Código legado da primeira versão (NDVI calculado no Pi). O módulo está sendo
+reescrito para seguir [`server/CONTRATO.md`](server/CONTRATO.md); a estação
+não depende deste código.
 
 ### `alignment/` — calibração RGB/NIR
 
-Contém `align.py`, imagens de referência e a matriz de alinhamento gerada. O
-script estima uma transformação afim entre as imagens RGB e NIR e grava a matriz
-informada como argumento. Esta pasta é mantida inteira no repositório para
-preservar o código e os materiais da calibração.
+Contém `align.py`, as imagens de referência e a matriz de alinhamento. O
+script estima uma transformação afim entre as imagens RGB e NIR e grava a
+matriz no caminho informado. A estação lê `alignment/alignment.npy`.
 
 ```bash
 python3 alignment/align.py alignment/rgb.jpg alignment/nir.jpg alignment/alignment.npy
 ```
 
-O script também gera imagens de preview no diretório de execução.
+### `server/` — API de ingestão e processamento
 
-### `server/` — API de ingestão e armazenamento
-
-API Flask responsável por receber operações e armazenar os três arquivos de
-cada captura. O diretório padrão de armazenamento é `entries/` na raiz do
-projeto; também pode ser configurado pela variável `ENTRIES_DIR`. Essa pasta é
-de dados locais e fica fora do versionamento.
-
-Dependências listadas em `server/requirements.txt`. Para iniciar localmente com
-Waitress:
+API Flask que recebe as capturas e processa cada uma em segundo plano.
+As capturas ficam em `entries/<uuid>/` (configurável por `ENTRIES_DIR`). O
+registro de cada missão fica em `missions/<uuid>/` (`MISSIONS_DIR`), com
+`mission.json` e `track.csv`.
 
 ```bash
 python3 -m pip install -r server/requirements.txt
@@ -85,24 +65,49 @@ cd server
 waitress-serve --host=0.0.0.0 --port=5000 app:app
 ```
 
-### `webApp/` — interface de visualização
+- `config.py` reúne os parâmetros de processamento: recorte, FOV da câmera
+  (`CAMERA_HFOV_DEG`) e limiares da detecção de focos.
+- `python reprocess.py [--all | <uuid>…]` refaz o processamento, por exemplo
+  depois de ajustar os parâmetros.
+- `python tools/mock_module.py` sobe um **módulo simulado** que implementa o
+  contrato. Ele voa sobre um campo sintético com focos plantados e envia as
+  capturas, o que permite usar o dashboard sem o Raspberry. Com
+  `MOCK_SPEED=8`, o simulador acelera o tempo.
 
-Aplicação Next.js que lê as operações armazenadas e apresenta imagens, NDVI e
-metadados. Por padrão, procura `entries/` na raiz do projeto; o caminho pode ser
-alterado pela variável `ENTRIES_DIR`.
+### `webApp/` — dashboard da estação
+
+Aplicação Next.js que comanda o módulo e apresenta as missões.
 
 ```bash
 cd webApp
 npm ci
-npm run dev
+npm run dev   # procura o módulo em http://pi3b:8000 (Tailscale)
 ```
 
-Para iniciar uma versão de produção, use `npm run build` e depois `npm start`.
+| Variável | Padrão | Uso |
+|---|---|---|
+| `MODULE_URL` | `http://pi3b:8000` | API do módulo (hostname do Raspberry na tailnet) |
+| `ENTRIES_DIR` | `../entries` | Capturas recebidas pela estação |
+| `MISSIONS_DIR` | `../missions` | Registro das missões: o do módulo (`mission.json`, `track.csv`) e o do dashboard (`record.json`) |
+| `STATION_FILE` | `station.json` (dentro de `webApp/`) | Posição da estação, marcada ou removida no próprio mapa. Só o dashboard usa. |
+
+Na primeira execução, marque a posição da estação no mapa: as posições do
+módulo são relativas ao ponto de partida. Para produção, use
+`npm run build` e depois `npm start`.
+
+Para testar tudo localmente sem o módulo, em três terminais:
+
+```bash
+cd server && waitress-serve --port=5000 app:app
+cd server && MOCK_SPEED=8 MOCK_PORT=8000 python tools/mock_module.py
+cd webApp && MODULE_URL=http://127.0.0.1:8000 npm run dev
+```
 
 ## Conteúdo versionado
 
-O repositório contém somente `alignment/`, `raspberry/`, `server/` e `webApp/`,
-além deste README e do `.gitignore`. Pastas auxiliares que existam localmente na
-raiz, dependências instaladas, caches, arquivos de ambiente e dados gerados em
-execução são ignorados. As matrizes de calibração necessárias à pipeline são
+O repositório contém somente `alignment/`, `raspberry/`, `server/` e
+`webApp/`, além deste README e do `.gitignore`. Pastas auxiliares que existam
+localmente na raiz, dependências instaladas, caches, arquivos de ambiente e
+dados gerados em execução são ignorados: `entries/`, `missions/` e
+`webApp/station.json`. As matrizes de calibração necessárias à pipeline são
 mantidas.
