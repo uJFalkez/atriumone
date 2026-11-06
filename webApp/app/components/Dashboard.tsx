@@ -9,7 +9,7 @@ import type { DataPayload, EntrySummary, ModulePoll, ModuleStatus, Station } fro
 import { CalibrationDialog, ConfirmDialog, StationPanel, Toasts, type Toast } from "./Dialogs";
 import { Icon } from "./Icon";
 import { CaptureDetail, MissionOverview } from "./Inspector";
-import type { HotspotRef, ImageLayer, TrailPoint } from "./MapView";
+import type { HotspotRef, TrailPoint } from "./MapView";
 import { MissionBanner } from "./MissionBanner";
 import { deviceHealth } from "./ModulePanel";
 import { Sidebar, type MissionView } from "./Sidebar";
@@ -87,7 +87,6 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
   const [hotspot, setHotspot] = useState<HotspotRef | null>(null);
   const [focusKey, setFocusKey] = useState(0);
 
-  const [imageLayer, setImageLayer] = useState<ImageLayer>("ndvi");
   const [showHotspots, setShowHotspots] = useState(true);
   const [showTrack, setShowTrack] = useState(true);
 
@@ -297,7 +296,6 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
             clusters={mission?.clusters ?? []}
             selectedEntryId={entry?.id ?? null}
             selectedHotspot={hotspot}
-            imageLayer={imageLayer}
             showHotspots={showHotspots}
             showTrack={showTrack}
             live={live}
@@ -325,14 +323,6 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
           </div>
 
           <div className="map-controls">
-            <div className="control-group" role="radiogroup" aria-label="Imagem sobre o mapa">
-              <span className="control-label">Camada</span>
-              {(["ndvi", "rgb", "none"] as ImageLayer[]).map((l) => (
-                <button key={l} role="radio" aria-checked={imageLayer === l} className={imageLayer === l ? "active" : ""} onClick={() => setImageLayer(l)}>
-                  {l === "ndvi" ? "NDVI" : l === "rgb" ? "RGB" : "Satélite"}
-                </button>
-              ))}
-            </div>
             <div className="control-group">
               <button className={`toggle ${showHotspots ? "on" : ""}`} aria-pressed={showHotspots} onClick={() => setShowHotspots((v) => !v)}><Icon name="target" size={14} />Focos</button>
               <button className={`toggle ${showTrack ? "on" : ""}`} aria-pressed={showTrack} onClick={() => setShowTrack((v) => !v)}><Icon name="route" size={14} />Trajeto</button>
@@ -349,9 +339,9 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
             </div>
           )}
 
-          {imageLayer === "ndvi" && (
+          {(mission?.entries.length ?? 0) > 0 && (
             <div className="map-legend">
-              <span className="control-label">NDVI</span>
+              <span className="control-label">NDVI médio da foto</span>
               <div className="legend-gradient" style={{ background: ndviGradientCss }} />
               <div className="legend-ticks"><span>−1</span><span>0</span><span>+1</span></div>
               <div className="legend-caption"><span>solo, água, estresse</span><span>vegetação densa</span></div>

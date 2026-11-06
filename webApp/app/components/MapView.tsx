@@ -1,6 +1,6 @@
 "use client";
 
-import type { GeoJSONSource, ImageSource, Map as MapLibreMap, MapLayerMouseEvent, Marker, Popup } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Marker, Popup } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { fmt } from "../../lib/format";
 import { toLngLat } from "../../lib/geo";
@@ -8,7 +8,6 @@ import type { HotspotCluster } from "../../lib/hotspots";
 import { ndviMapExpression, SEVERITY } from "../../lib/scale";
 import type { EntrySummary, Station } from "../../lib/types";
 
-export type ImageLayer = "ndvi" | "rgb" | "none";
 export type HotspotRef = { entryId: string; id: number };
 type LiveModule = { north_m: number; east_m: number; yaw_deg: number | null } | null;
 export type TrailPoint = [number, number]; // [north_m, east_m]
@@ -50,7 +49,6 @@ export function MapView({
   clusters,
   selectedEntryId,
   selectedHotspot,
-  imageLayer,
   showHotspots,
   showTrack,
   live,
@@ -68,7 +66,6 @@ export function MapView({
   clusters: HotspotCluster[];
   selectedEntryId: string | null;
   selectedHotspot: HotspotRef | null;
-  imageLayer: ImageLayer;
   showHotspots: boolean;
   showTrack: boolean;
   live: LiveModule;
@@ -87,7 +84,6 @@ export function MapView({
   const stationMarker = useRef<Marker | null>(null);
   const liveMarker = useRef<Marker | null>(null);
   const popup = useRef<Popup | null>(null);
-  const images = useRef(new Map<string, string>());
   const hasHotspots = useRef(false);
   const hoveredId = useRef<string | null>(null);
   const refreshHover = useRef<() => void>(() => undefined);
@@ -127,9 +123,12 @@ export function MapView({
         map.addSource("hotspots", { type: "geojson", data: empty });
         map.addSource("trail", { type: "geojson", data: empty });
 
-        map.addLayer({ id: "footprint-fill", type: "fill", source: "footprints", paint: { "fill-color": "#ffffff", "fill-opacity": ["case", ["get", "selected"], 0.06, 0.0] } });
+        // As fotos não são desenhadas no mapa (só no hover). A pegada aparece
+        // apenas para a foto selecionada ou sob o mouse.
+        const footprintFilter = ["any", ["get", "selected"], ["==", ["get", "id"], ""]] as never;
+        map.addLayer({ id: "footprint-fill", type: "fill", source: "footprints", filter: footprintFilter, paint: { "fill-color": "#9cf0c6", "fill-opacity": 0.08 } });
         map.addLayer({
-          id: "footprint-outline", type: "line", source: "footprints",
+          id: "footprint-outline", type: "line", source: "footprints", filter: footprintFilter,
           paint: {
             "line-color": ["case", ["get", "selected"], "#9cf0c6", ["get", "imu"], IMU_COLOR, "#ffffff"],
             "line-opacity": ["case", ["get", "selected"], 1, 0.35],
@@ -183,7 +182,7 @@ export function MapView({
           map.getCanvas().style.cursor = handlers.current.placingStation ? "crosshair" : "";
           popup.current?.remove();
         };
-        for (const layer of ["captures", "hotspot", "footprint-fill"]) {
+        for (const layer of ["captures", "hotspot"]) {
           map.on("mouseenter", layer, enter);
           map.on("mouseleave", layer, leave);
         }
@@ -232,10 +231,10 @@ export function MapView({
             handlers.current.onPlaceStation([event.lngLat.lng, event.lngLat.lat]);
             return;
           }
-          const hit = map.queryRenderedFeatures(event.point, { layers: ["hotspot", "captures", "footprint-fill"] });
+          const hit = map.queryRenderedFeatures(event.point, { layers: ["hotspot", "captures"] });
           const hotspot = hit.find((f) => f.layer.id === "hotspot");
           if (hotspot) return handlers.current.onSelectHotspot({ entryId: hotspot.properties.entryId, id: hotspot.properties.hid });
-          const capture = hit.find((f) => f.layer.id === "captures") || hit.find((f) => f.layer.id === "footprint-fill");
+          const capture = hit.find((f) => f.layer.id === "captures");
           if (capture) handlers.current.onSelectEntry(capture.properties.id);
         });
 
@@ -259,7 +258,6 @@ export function MapView({
       cancelAnimationFrame(frame);
       mapRef.current?.remove();
       mapRef.current = null;
-      images.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -310,6 +308,9 @@ export function MapView({
       if (!map?.getLayer("captures")) return;
       const id = hoveredId.current ?? "";
       map.setPaintProperty("captures", "circle-radius", ["case", ["get", "selected"], 8, ["==", ["get", "id"], id], 7, 4.5]);
+      const filter = ["any", ["get", "selected"], ["==", ["get", "id"], id]] as never;
+      map.setFilter("footprint-fill", filter);
+      map.setFilter("footprint-outline", filter);
     };
   }, []);
 
@@ -408,36 +409,7 @@ export function MapView({
         : [],
     });
 
-    // Imagens projetadas no solo (pegada de cada foto)
-    const wanted = new Map<string, { url: string; coordinates: [number, number][] }>();
-    if (imageLayer !== "none") {
-      for (const e of withFootprint) {
-        if (e.status !== "processed") continue;
-        wanted.set(e.id, {
-          url: `/api/entries/${e.id}/preview/${imageLayer === "ndvi" ? "ndvi.png" : "rgb.jpg"}?v=${e.version}`,
-          coordinates: e.footprint!.map(([n, east]) => ll(n, east)),
-        });
-      }
-    }
-    for (const id of [...images.current.keys()]) {
-      if (!wanted.has(id)) {
-        if (map.getLayer(`img-${id}`)) map.removeLayer(`img-${id}`);
-        if (map.getSource(`img-${id}`)) map.removeSource(`img-${id}`);
-        images.current.delete(id);
-      }
-    }
-    for (const [id, { url, coordinates }] of wanted) {
-      const key = `${url}|${coordinates.flat().join(",")}`;
-      const coords = coordinates as [[number, number], [number, number], [number, number], [number, number]];
-      if (!images.current.has(id)) {
-        map.addSource(`img-${id}`, { type: "image", url, coordinates: coords });
-        map.addLayer({ id: `img-${id}`, type: "raster", source: `img-${id}`, paint: { "raster-opacity": 0.92, "raster-fade-duration": 200 } }, "footprint-fill");
-      } else if (images.current.get(id) !== key) {
-        (map.getSource(`img-${id}`) as ImageSource).updateImage({ url, coordinates: coords });
-      }
-      images.current.set(id, key);
-    }
-  }, [entries, clusters, track, station, selectedEntryId, selectedHotspot, imageLayer, showHotspots, showTrack, ready]);
+  }, [entries, clusters, track, station, selectedEntryId, selectedHotspot, showHotspots, showTrack, ready]);
 
   // ===== Enquadramento ao trocar de missão =====
   useEffect(() => {
