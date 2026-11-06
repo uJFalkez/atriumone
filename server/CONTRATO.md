@@ -282,9 +282,15 @@ Valores sem leitura vão como `null`; não omita os campos obrigatórios.
   Com a câmera apontando para o nadir, isso é FRD. A estação projeta a
   pegada de cada foto no solo com o quaternion (ou roll/pitch/yaw), então
   câmeras fora do nadir também são tratadas.
-- **Câmeras:** RGB Arducam 8MP USB (3264×2448) e NIR Pi Camera V2 NoIR
-  (3280×2464, HFOV 62,2°). A estação usa o HFOV da câmera **RGB**, estimado em
-  ≈ 63,6° a partir da matriz de alinhamento RGB/NIR.
+- **Câmeras e resolução enviada:**
+  - RGB Arducam 8MP USB: **1600×1200** (modo MJPEG nativo, mesmo campo de
+    visão de 3264×2448);
+  - NIR Pi Camera V2 NoIR: **1640×1232** (binning 2×2, mesmo campo de visão de
+    3280×2464, HFOV 62,2°).
+
+  A estação usa o HFOV da câmera **RGB**, ≈ 63,6°, estimado a partir da matriz
+  de alinhamento. O HFOV não depende da resolução: a distância focal em
+  pixels é calculada para a largura de cada foto.
 - **Calibração dos sensores:** os valores já chegam corrigidos pela
   calibração (o oito). A estação não aplica nenhuma correção.
 

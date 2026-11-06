@@ -233,7 +233,7 @@ O Pi 3B **não tem relógio de hardware**.
 | Aquecimento | 120 s |
 | Intervalo mínimo entre fotos | 10 s |
 | Histórico de posições | 1 a 5 Hz |
-| Imagens | Sensores: RGB 3264×2448 (USB), NIR 3280×2464 (CSI). Podem ir reduzidas, sempre com o campo de visão inteiro (ex.: 1632×1224 e 1640×1232). |
+| Imagens | RGB **1600×1200** (Arducam USB, MJPEG nativo) e NIR **1640×1232** (Pi Camera V2, binning 2×2), ambas com o campo de visão inteiro do sensor. |
 
 ## 6. Critérios de aceitação
 
