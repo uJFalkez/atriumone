@@ -26,7 +26,9 @@ Estas coisas **não** devem existir no código do módulo, mesmo que pareçam
 úteis:
 
 - **Nenhum processamento de imagem.** Sem NDVI, sem alinhamento RGB/NIR, sem
-  recorte, sem redimensionar, sem correção de cor, sem matriz de alinhamento.
+  recorte, sem correção de cor, sem matriz de alinhamento. Sem redimensionar,
+  exceto para reduzir o quadro inteiro quando o modo da câmera recortaria o
+  sensor (§3.4).
   O módulo manda os quadros **crus**, só codificados em JPEG. (O NDVI no Pi
   foi abandonado: o Pi 3B não aguenta.)
 - **Nenhuma análise.** Sem detecção de focos, sem estatísticas e sem
@@ -118,8 +120,10 @@ Depois de `captures_enabled_at`:
    3. captura RGB e NIR **ao mesmo tempo** (por exemplo, uma thread por
       câmera, descartando antes os quadros antigos do buffer da câmera USB)
       e grava `rgb.jpg` e `nir.jpg` (JPEG, qualidade ≥ 90). A resolução pode
-      ser reduzida para aliviar o Pi, desde que seja o **quadro inteiro
-      reescalado** (binning ou resize), nunca um recorte do sensor;
+      ser reduzida para aliviar o Pi, desde que seja o **quadro inteiro**:
+      de preferência um modo nativo da câmera que cubra o sensor todo
+      (binning); só quando esse modo não existir, redimensionar por software
+      o quadro completo. Nunca um modo que recorte o sensor;
    4. escreve o `metadata.json` exatamente como no contrato (seção 3), com
       `schema: 2` e todos os campos obrigatórios (`null` se faltar leitura);
    5. grava tudo numa pasta temporária e **renomeia atomicamente** para a fila
