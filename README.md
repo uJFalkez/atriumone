@@ -1,4 +1,4 @@
-# Atrium One
+# AtriumOne
 
 Projeto de TCC para captura de imagens RGB e NIR com posição e orientação,
 cálculo de NDVI, detecção de focos de NDVI baixo e visualização das missões
@@ -102,12 +102,3 @@ cd server && waitress-serve --port=5000 app:app
 cd server && MOCK_SPEED=8 MOCK_PORT=8000 python tools/mock_module.py
 cd webApp && MODULE_URL=http://127.0.0.1:8000 npm run dev
 ```
-
-## Conteúdo versionado
-
-O repositório contém somente `alignment/`, `raspberry/`, `server/` e
-`webApp/`, além deste README e do `.gitignore`. Pastas auxiliares que existam
-localmente na raiz, dependências instaladas, caches, arquivos de ambiente e
-dados gerados em execução são ignorados: `entries/`, `missions/` e
-`webApp/station.json`. As matrizes de calibração necessárias à pipeline são
-mantidas.
