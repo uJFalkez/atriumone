@@ -59,8 +59,18 @@ As capturas ficam em `entries/<uuid>/` (configurável por `ENTRIES_DIR`). O
 registro de cada missão fica em `missions/<uuid>/` (`MISSIONS_DIR`), com
 `mission.json` e `track.csv`.
 
+Na primeira vez, crie o ambiente virtual na raiz do projeto. O Ubuntu não
+permite `pip install` direto no Python do sistema.
+
 ```bash
-python3 -m pip install -r server/requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r server/requirements.txt
+```
+
+Para subir a API, sempre com o ambiente ativado (o prompt mostra `(.venv)`):
+
+```bash
+source .venv/bin/activate
 cd server
 waitress-serve --host=0.0.0.0 --port=5000 app:app
 ```
@@ -95,7 +105,8 @@ Na primeira execução, marque a posição da estação no mapa: as posições d
 módulo são relativas ao ponto de partida. Para produção, use
 `npm run build` e depois `npm start`.
 
-Para testar tudo localmente sem o módulo, em três terminais:
+Para testar tudo localmente sem o módulo, em três terminais (nos dois
+primeiros, com `source .venv/bin/activate` antes):
 
 ```bash
 cd server && waitress-serve --port=5000 app:app
