@@ -25,7 +25,7 @@ import numpy as np
 import config
 
 
-ANALYSIS_VERSION = 3
+ANALYSIS_VERSION = 4  # 4: escala de cores -0,2..+0,6
 
 
 # ============================================================
@@ -264,16 +264,21 @@ def quantize(ndvi):
 # ============================================================
 # Escala de cores do NDVI (divergente: terra <- neutro -> verde)
 # ============================================================
+# Só exibição: os valores calculados não mudam. O pseudo-NDVI (NoIR sem filtro
+# passa-IR) é comprimido para perto de zero (vegetação saudável ~0,4), então a
+# escala cobre -0,2..+0,6 com o neutro em +0,2; fora disso, satura nas pontas.
+
+NDVI_DISPLAY_MIN, NDVI_DISPLAY_MAX = -0.2, 0.6
 
 _NDVI_STOPS = [
-    (-1.00, (92, 38, 18)),
-    (-0.60, (166, 78, 38)),
-    (-0.30, (214, 139, 92)),
-    (0.00, (232, 228, 218)),
-    (0.25, (150, 205, 176)),
-    (0.50, (60, 160, 120)),
-    (0.75, (22, 112, 86)),
-    (1.00, (8, 70, 56)),
+    (-0.20, (92, 38, 18)),
+    (-0.04, (166, 78, 38)),
+    (0.08, (214, 139, 92)),
+    (0.20, (232, 228, 218)),
+    (0.30, (150, 205, 176)),
+    (0.40, (60, 160, 120)),
+    (0.50, (22, 112, 86)),
+    (0.60, (8, 70, 56)),
 ]
 
 

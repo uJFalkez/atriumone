@@ -346,7 +346,7 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
             <div className="map-legend">
               <span className="control-label">NDVI médio da foto</span>
               <div className="legend-gradient" style={{ background: ndviGradientCss }} />
-              <div className="legend-ticks"><span>−1</span><span>0</span><span>+1</span></div>
+              <div className="legend-ticks"><span>≤ −0,2</span><span>+0,2</span><span>≥ +0,6</span></div>
               <div className="legend-caption"><span>solo, água, estresse</span><span>vegetação densa</span></div>
             </div>
           )}
