@@ -2,8 +2,8 @@
 
 Projeto de TCC para captura de imagens RGB e NIR com posição e orientação,
 cálculo de NDVI, detecção de focos de NDVI baixo e visualização das missões
-num mapa de satélite. O repositório reúne quatro módulos: `raspberry`,
-`alignment`, `server` e `webApp`.
+num mapa de satélite. O repositório reúne três módulos: `raspberry`,
+`server` e `webApp`.
 
 O contrato entre o módulo e a estação (API, estados da missão e formato do
 `metadata.json`) está em [`server/CONTRATO.md`](server/CONTRATO.md).
@@ -25,7 +25,7 @@ O passo a passo do que o módulo deve fazer, e do que não deve, está em
    `POST /entry`. A cópia local é apagada após cada confirmação.
 4. **Processamento — `server/`:** a estação grava os arquivos crus de forma
    atômica e então:
-   - alinha o NIR à RGB (`alignment/alignment.npy`);
+   - alinha o NIR à RGB (`server/calibration/alignment.npy`);
    - calcula o NDVI;
    - detecta focos pequenos de NDVI baixo;
    - projeta a pegada da foto e os focos no solo;
@@ -41,16 +41,6 @@ O passo a passo do que o módulo deve fazer, e do que não deve, está em
 Código legado da primeira versão (NDVI calculado no Pi). O módulo está sendo
 reescrito para seguir [`server/CONTRATO.md`](server/CONTRATO.md); a estação
 não depende deste código.
-
-### `alignment/` — calibração RGB/NIR
-
-Contém `align.py`, as imagens de referência e a matriz de alinhamento. O
-script estima uma transformação afim entre as imagens RGB e NIR e grava a
-matriz no caminho informado. A estação lê `alignment/alignment.npy`.
-
-```bash
-python3 alignment/align.py alignment/rgb.jpg alignment/nir.jpg alignment/alignment.npy
-```
 
 ### `server/` — API de ingestão e processamento
 
@@ -79,6 +69,9 @@ waitress-serve --host=0.0.0.0 --port=5000 app:app
   (`CAMERA_HFOV_DEG`) e limiares da detecção de focos.
 - `python reprocess.py [--all | <uuid>…]` refaz o processamento, por exemplo
   depois de ajustar os parâmetros.
+- `calibration/alignment.npy` é a matriz de alinhamento RGB→NIR, calibrada
+  com alvos no chão por `python tools/align_targets.py` (ver o cabeçalho do
+  script). Depois de recalibrar, rode `python reprocess.py --all`.
 - `python tools/mock_module.py` sobe um **módulo simulado** que implementa o
   contrato. Ele voa sobre um campo sintético com focos plantados e envia as
   capturas, o que permite usar o dashboard sem o Raspberry. Com

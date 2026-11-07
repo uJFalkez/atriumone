@@ -8,10 +8,10 @@ disparos e a leitura linha a linha dos sensores desalinham as duas imagens).
 Saída: matriz 2x3 que leva um pixel da RGB ao pixel correspondente da NIR já
 redimensionada para o tamanho da RGB (mesma convenção de server/processing.py,
 usada com cv2.WARP_INVERSE_MAP). Depois de gerar, ajuste ALIGNMENT_RGB_SIZE em
-server/config.py para a resolução da RGB usada aqui.
+server/config.py para a resolução da RGB usada aqui e rode reprocess.py --all.
 
-Uso:
-    python alignment/align_targets.py <entries_dir> <mission_id (prefixo)> alignment/alignment.npy
+Uso (de dentro de server/):
+    python tools/align_targets.py ../entries <mission_id (prefixo)> calibration/alignment.npy
         [--max-angular 0.15]
 """
 

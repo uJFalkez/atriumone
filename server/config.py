@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ENTRIES_DIR = Path(os.environ.get("ENTRIES_DIR", PROJECT_ROOT / "entries")).resolve()
 MISSIONS_DIR = Path(os.environ.get("MISSIONS_DIR", PROJECT_ROOT / "missions")).resolve()
 ALIGNMENT_PATH = Path(
-    os.environ.get("ALIGNMENT_PATH", PROJECT_ROOT / "alignment" / "alignment.npy")
+    os.environ.get("ALIGNMENT_PATH", Path(__file__).resolve().parent / "calibration" / "alignment.npy")
 )
 
 # ============================================================
@@ -18,7 +18,7 @@ ALIGNMENT_PATH = Path(
 
 CROP_MARGIN_PX = 8
 
-# Resolução da RGB usada para calcular alignment.npy (alignment/align_targets.py,
+# Resolução da RGB usada para calcular alignment.npy (tools/align_targets.py,
 # com alvos no chão, missão 719bc165 de 06/11/2026).
 # Fotos em outra resolução (mesmo campo de visão, reescaladas) têm a matriz
 # convertida automaticamente. Atualize se recalibrar em outra resolução.
