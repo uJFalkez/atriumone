@@ -25,7 +25,7 @@ import numpy as np
 import config
 
 
-ANALYSIS_VERSION = 2
+ANALYSIS_VERSION = 3
 
 
 # ============================================================
@@ -74,32 +74,43 @@ def _get(source, *keys):
 # Alinhamento e NDVI
 # ============================================================
 
-_warp_matrix = None
+_matrices = {}
+
+
+def base_matrix(focus=None):
+    """Matriz calibrada para a posição de foco da RGB (ou a padrão).
+
+    A Arducam tem foco motorizado: mudar o foco move a lente e altera a
+    ampliação e o centro óptico, então cada posição de foco tem sua calibração
+    (config.ALIGNMENT_BY_FOCUS). Retorna (matriz, nome do arquivo).
+    """
+    path = Path(config.ALIGNMENT_BY_FOCUS.get(focus, config.ALIGNMENT_PATH))
+    if path not in _matrices:
+        matrix = np.load(path).astype(np.float32)
+        if matrix.shape != (2, 3):
+            raise RuntimeError(f"Matriz de alinhamento inválida em {path}: {matrix.shape}")
+        _matrices[path] = matrix
+    return _matrices[path], path.name
 
 
 def warp_matrix():
-    global _warp_matrix
-    if _warp_matrix is None:
-        matrix = np.load(config.ALIGNMENT_PATH).astype(np.float32)
-        if matrix.shape != (2, 3):
-            raise RuntimeError(f"Matriz de alinhamento inválida: {matrix.shape}")
-        _warp_matrix = matrix
-    return _warp_matrix
+    return base_matrix()[0]
 
 
-def matrix_for(width, height):
+def matrix_for(width, height, base=None):
     """Matriz de alinhamento convertida para a resolução da foto.
 
-    alignment.npy foi calibrada com a RGB em config.ALIGNMENT_RGB_SIZE. Com a
+    As matrizes foram calibradas com a RGB em config.ALIGNMENT_RGB_SIZE. Com a
     foto em outra resolução (mesmo campo de visão, só reescalada), as
     coordenadas mudam por S = diag(sx, sy): a parte linear vira S·A·S⁻¹ e o
     deslocamento vira S·t.
     """
+    base = warp_matrix() if base is None else base
     cal_w, cal_h = config.ALIGNMENT_RGB_SIZE
     sx, sy = width / cal_w, height / cal_h
     if sx == 1 and sy == 1:
-        return warp_matrix()
-    a = warp_matrix().astype(np.float64)
+        return np.float32(base)
+    a = np.asarray(base, np.float64)
     scaled = np.array([
         [a[0, 0], a[0, 1] * sx / sy, a[0, 2] * sx],
         [a[1, 0] * sy / sx, a[1, 1], a[1, 2] * sy],
@@ -107,12 +118,67 @@ def matrix_for(width, height):
     return scaled.astype(np.float32)
 
 
-def align_nir(nir, width, height):
+def _ecc_band(img):
+    """Banda usada no registro: média de azul e verde (a mesma do align.py legado)."""
+    band = (img[:, :, 0].astype(np.float32) + img[:, :, 1].astype(np.float32)) * 0.5
+    return cv2.normalize(band, None, 0, 1, cv2.NORM_MINMAX)
+
+
+def refine_alignment(rgb, nir_resized, M0):
+    """Ajusta a matriz desta foto por ECC, partindo da calibração.
+
+    As duas câmeras não registram a cena exatamente no mesmo instante e, com o
+    módulo em movimento, a relação entre elas varia de foto para foto. O ECC
+    corrige isso pela imagem inteira; a correção só é aceita dentro de limites
+    físicos plausíveis em relação à calibração (senão fica a matriz calibrada).
+    Validado nos alvos das missões 09 e 10: erro médio de 8,8 → 1,9 px.
+    """
+    info = {"refined": False, "cc": None, "reason": None}
+    if not config.ALIGNMENT_REFINE:
+        info["reason"] = "desativado"
+        return M0, info
+    h, w = rgb.shape[:2]
+    S = config.REFINE_SCALE
+    rs = cv2.resize(_ecc_band(rgb), None, fx=S, fy=S, interpolation=cv2.INTER_AREA)
+    ns = cv2.resize(_ecc_band(nir_resized), None, fx=S, fy=S, interpolation=cv2.INTER_AREA)
+    W = np.float32(M0).copy()
+    W[:, 2] *= S
+    try:
+        cc, W = cv2.findTransformECC(
+            rs, ns, W, cv2.MOTION_AFFINE,
+            (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 300, 1e-6), None, 5,
+        )
+    except cv2.error:
+        info["reason"] = "ECC não convergiu"
+        return M0, info
+    W = W.astype(np.float64)
+    W[:, 2] /= S
+    info["cc"] = round(float(cc), 3)
+
+    rel = W[:, :2] @ np.linalg.inv(np.asarray(M0, np.float64)[:, :2])
+    sx, sy = np.hypot(*rel[:, 0]), np.hypot(*rel[:, 1])
+    rot = abs(np.degrees(np.arctan2(rel[1, 0], rel[0, 0])))
+    grid = np.array([[x, y] for x in (0, w / 2, w) for y in (0, h / 2, h)], np.float64)
+    move = lambda M: grid @ np.asarray(M, np.float64)[:, :2].T + np.asarray(M, np.float64)[:, 2]
+    shift = float(np.linalg.norm(move(W) - move(M0), axis=1).max())
+    max_shift = config.REFINE_MAX_SHIFT_PX * w / config.ALIGNMENT_RGB_SIZE[0]
+    if cc < config.REFINE_MIN_CC:
+        info["reason"] = f"correlação baixa ({cc:.2f})"
+    elif max(abs(sx - 1), abs(sy - 1)) > config.REFINE_MAX_SCALE or rot > config.REFINE_MAX_ROT_DEG or shift > max_shift:
+        info["reason"] = "fora dos limites plausíveis"
+    else:
+        info["refined"] = True
+        info["shift_px"] = round(shift, 1)
+        return W.astype(np.float32), info
+    return M0, info
+
+
+def align_nir(nir, width, height, matrix=None):
     if nir.shape[:2] != (height, width):
         nir = cv2.resize(nir, (width, height), interpolation=cv2.INTER_LINEAR)
     return cv2.warpAffine(
         nir,
-        matrix_for(width, height),
+        matrix_for(width, height) if matrix is None else matrix,
         (width, height),
         flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
         borderMode=cv2.BORDER_CONSTANT,
@@ -123,20 +189,21 @@ def align_nir(nir, width, height):
 _crop_cache = {}
 
 
-def crop_box(width, height, nir_size=None):
+def crop_box(width, height, nir_size=None, matrix=None):
     """Maior retângulo da imagem RGB totalmente coberto pelo NIR alinhado.
 
     Projeta um quadro NIR "todo válido" com a mesma transformação usada no
     alinhamento e encolhe a caixa envolvente até não restar pixel inválido
     nas bordas. Depende só da matriz e das resoluções, então é cacheado.
     """
-    key = (width, height, nir_size, matrix_for(width, height).tobytes())
+    matrix = matrix_for(width, height) if matrix is None else np.float32(matrix)
+    key = (width, height, nir_size, matrix.tobytes())
     if key in _crop_cache:
         return _crop_cache[key]
 
     factor = 8  # resolução reduzida: suficiente e rápido
     w, h = max(1, width // factor), max(1, height // factor)
-    matrix = matrix_for(width, height).copy()
+    matrix = matrix.copy()
     matrix[:, 2] /= factor
     # O NIR é redimensionado para o tamanho da RGB antes do warp, então um
     # quadro todo válido no tamanho da RGB representa o NIR inteiro.
@@ -513,10 +580,15 @@ def process_entry(entry_dir: Path) -> dict:
         raise RuntimeError("nir.jpg ilegível")
 
     full_h, full_w = rgb.shape[:2]
-    nir_aligned = align_nir(nir, full_w, full_h)
+    nir = cv2.resize(nir, (full_w, full_h), interpolation=cv2.INTER_LINEAR)
+    focus = _get(metadata, "camera", "rgb", "focus")
+    base, base_name = base_matrix(focus)
+    matrix, alignment = refine_alignment(rgb, nir, matrix_for(full_w, full_h, base))
+    alignment.update({"base": base_name, "focus": focus, "matrix": np.round(matrix, 6).tolist()})
+    nir_aligned = align_nir(nir, full_w, full_h, matrix)
     del nir
 
-    x1, y1, x2, y2 = crop_box(full_w, full_h)
+    x1, y1, x2, y2 = crop_box(full_w, full_h, matrix=matrix)
     rgb_crop = rgb[y1:y2, x1:x2]
     ndvi, valid = compute_ndvi(rgb_crop, nir_aligned[y1:y2, x1:x2])
     del nir_aligned
@@ -528,7 +600,7 @@ def process_entry(entry_dir: Path) -> dict:
     os.replace(buffer_path, entry_dir / "ndvi.npy")
 
     geo = Georeference(metadata, full_w, full_h)
-    quality = assess_quality(metadata, rgb_crop)
+    quality = assess_quality(metadata, rgb_crop, alignment["refined"])
     if quality["survey"]:
         hotspots, detection = detect_hotspots(ndvi, valid, geo.gsd_m if geo.ok else None)
     else:
@@ -580,13 +652,14 @@ def process_entry(entry_dir: Path) -> dict:
         },
         "warnings": warnings,
         "quality": quality,
+        "alignment": alignment,
     }
     _write_json(entry_dir / "analysis.json", analysis)
     (entry_dir / "error.json").unlink(missing_ok=True)
     return analysis
 
 
-def assess_quality(metadata, rgb_crop):
+def assess_quality(metadata, rgb_crop, refined=False):
     """Classifica a foto: entra no levantamento (focos, médias, mapa) ou não.
 
     survey = False quando a foto não representa o levantamento aéreo:
@@ -606,7 +679,8 @@ def assess_quality(metadata, rgb_crop):
     return {
         "survey": not reasons,
         "reasons": reasons,
-        "alignment_uncertain": angular is not None and angular > config.MAX_ANGULAR_SPEED,
+        # em movimento e sem correção por foto aceita
+        "alignment_uncertain": angular is not None and angular > config.MAX_ANGULAR_SPEED and not refined,
         "rgb_saturated": round(saturated, 4),
         "angular_speed_rad_s": angular,
         "height_m": height,

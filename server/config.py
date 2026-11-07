@@ -6,9 +6,22 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 ENTRIES_DIR = Path(os.environ.get("ENTRIES_DIR", PROJECT_ROOT / "entries")).resolve()
 MISSIONS_DIR = Path(os.environ.get("MISSIONS_DIR", PROJECT_ROOT / "missions")).resolve()
-ALIGNMENT_PATH = Path(
-    os.environ.get("ALIGNMENT_PATH", Path(__file__).resolve().parent / "calibration" / "alignment.npy")
-)
+CALIBRATION_DIR = Path(__file__).resolve().parent / "calibration"
+# Matriz padrão (foco 144 da RGB) e matrizes por posição de foco da Arducam:
+# mudar o foco move a lente e muda a relação entre as câmeras.
+ALIGNMENT_PATH = Path(os.environ.get("ALIGNMENT_PATH", CALIBRATION_DIR / "alignment.npy"))
+ALIGNMENT_BY_FOCUS = {
+    144: CALIBRATION_DIR / "alignment.npy",        # missão 10 (719bc165), afim completa com alvos
+    57: CALIBRATION_DIR / "alignment_focus57.npy", # missão 09 (6b93dceb), escala+translação sobre a de 144
+}
+
+# Correção por foto (ECC) sobre a calibração, com limites de plausibilidade.
+ALIGNMENT_REFINE = True
+REFINE_SCALE = 0.5            # resolução de trabalho do ECC
+REFINE_MIN_CC = 0.6           # correlação mínima para aceitar
+REFINE_MAX_SCALE = 0.07       # variação máxima de escala em relação à calibração
+REFINE_MAX_ROT_DEG = 1.5      # rotação máxima em relação à calibração
+REFINE_MAX_SHIFT_PX = 90      # deslocamento máximo nos cantos (px em 1600 de largura)
 
 # ============================================================
 # Recorte da região válida após o alinhamento

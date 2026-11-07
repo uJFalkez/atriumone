@@ -12,7 +12,12 @@ server/config.py para a resolução da RGB usada aqui e rode reprocess.py --all.
 
 Uso (de dentro de server/):
     python tools/align_targets.py ../entries <mission_id (prefixo)> calibration/alignment.npy
-        [--max-angular 0.15]
+        [--max-angular 0.15] [--relative-to calibration/alignment.npy]
+
+--relative-to: em vez da afim livre (6 parâmetros), ajusta só escala uniforme
+e translação sobre a parte linear de outra calibração. Use quando houver poucos
+alvos (ex.: um por foto), caso em que a afim livre não fica bem determinada.
+Foi assim que se gerou calibration/alignment_focus57.npy (missão 6b93dceb).
 """
 
 import argparse
@@ -73,6 +78,7 @@ def main():
     parser.add_argument("mission")
     parser.add_argument("output")
     parser.add_argument("--max-angular", type=float, default=0.15, help="rad/s; acima disso a foto não entra no ajuste")
+    parser.add_argument("--relative-to", help="matriz base: ajusta só escala + translação sobre a parte linear dela")
     args = parser.parse_args()
 
     photos = []
@@ -137,10 +143,17 @@ def main():
                         Q.append(b["corners"][j])
         return np.float32(P), np.float32(Q)
 
+    base = np.load(args.relative_to).astype(float) if args.relative_to else None
+
     def fit(seqs):
         P, Q = points(seqs)
-        M, _ = cv2.estimateAffine2D(P, Q, method=cv2.LMEDS)
-        return M
+        if base is None:
+            M, _ = cv2.estimateAffine2D(P, Q, method=cv2.LMEDS)
+            return M
+        X = P.astype(float) @ base[:, :2].T          # escala uniforme k e translação t: Q ≈ k·A·P + t
+        Xc, Qc = X - X.mean(0), Q - Q.mean(0)
+        k = float((Xc * Qc).sum() / (Xc * Xc).sum())
+        return np.c_[k * base[:, :2], Q.mean(0) - k * X.mean(0)]
 
     def error(M, seq):
         P, Q = points([seq], M)

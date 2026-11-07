@@ -263,6 +263,7 @@ Respostas:
 | `orientation.quaternion` | recomendado | Rotação do **referencial da câmera** para NED (Hamilton; `w` escalar). Ver "Convenções físicas". |
 | `orientation.roll_deg`, `pitch_deg`, `yaw_deg` | sim | Euler ZYX do mesmo referencial. `yaw_deg` é o rumo do **topo da imagem**, em graus a partir do norte, sentido horário. Com a câmera no nadir, roll e pitch ficam perto de 0. |
 | `stability` | opcional | Leituras que justificaram a foto. |
+| `camera.rgb.focus` | recomendado | Posição de foco da RGB (Arducam, foco motorizado). A estação escolhe a calibração de alinhamento por esse valor: mudar o foco move a lente e muda a relação entre as câmeras. **Mantenha o foco fixo** entre missões; um valor novo exige nova calibração com alvos. |
 
 Campos desconhecidos são aceitos e aparecem no dashboard como "outros dados".
 Valores sem leitura vão como `null`; não omita os campos obrigatórios.
