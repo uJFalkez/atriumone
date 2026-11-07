@@ -1,7 +1,7 @@
 """Módulo simulado: implementa a API do módulo descrita em CONTRATO.md.
 
 Serve para desenvolver e demonstrar a estação (dashboard + ingestão) sem o
-Raspberry Pi. Não substitui nem compartilha código com raspberry/.
+Raspberry Pi. Não substitui nem compartilha código com o software do módulo.
 
 O que ele faz:
   - máquina de estados idle / calibrating / in_mission / uploading;

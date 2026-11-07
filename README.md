@@ -2,8 +2,11 @@
 
 Projeto de TCC para captura de imagens RGB e NIR com posição e orientação,
 cálculo de NDVI, detecção de focos de NDVI baixo e visualização das missões
-num mapa de satélite. O repositório reúne três módulos: `raspberry`,
-`server` e `webApp`.
+num mapa de satélite.
+
+Este repositório reúne a estação: `server` (API e processamento) e `webApp`
+(dashboard). O software do módulo (Raspberry Pi) vive em um repositório
+próprio; a versão antiga, com NDVI calculado no Pi, está na tag `V1`.
 
 O contrato entre o módulo e a estação (API, estados da missão e formato do
 `metadata.json`) está em [`server/CONTRATO.md`](server/CONTRATO.md).
@@ -35,12 +38,6 @@ O passo a passo do que o módulo deve fazer, e do que não deve, está em
    comparação RGB/NDVI, histograma, telemetria e o resumo de cada missão.
 
 ## Módulos
-
-### `raspberry/` — módulo embarcado
-
-Código legado da primeira versão (NDVI calculado no Pi). O módulo está sendo
-reescrito para seguir [`server/CONTRATO.md`](server/CONTRATO.md); a estação
-não depende deste código.
 
 ### `server/` — API de ingestão e processamento
 

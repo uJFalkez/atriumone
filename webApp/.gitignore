@@ -2,4 +2,7 @@ node_modules/
 .next/
 *.tsbuildinfo
 .env*.local
+# Gerado pelo Next a cada dev/build (muda entre os dois modos)
+next-env.d.ts
+# Posição da estação: configuração local, marcada no próprio dashboard
 station.json

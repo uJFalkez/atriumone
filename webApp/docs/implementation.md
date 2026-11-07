@@ -14,8 +14,9 @@
   - **Iniciar** vira **Finalizar** durante a missão e só é liberado com
     `ready_to_finish`;
   - **Forçar finalização** fica no menu "⋯" e pede confirmação.
-- `MapView` usa MapLibre com o satélite da Esri. Camadas:
-  - pegadas com a imagem NDVI ou RGB projetada;
+- `MapView` usa MapLibre com o satélite da Esri. As fotos não são desenhadas
+  no mapa: a foto aparece (e só então é carregada) no popup do hover, e a
+  pegada só é desenhada para a foto sob o mouse ou selecionada. Camadas:
   - trajeto e pontos coloridos pelo NDVI médio;
   - focos agrupados (`lib/hotspots.ts`) com pulso;
   - estação e módulo ao vivo, com o rastro em memória.

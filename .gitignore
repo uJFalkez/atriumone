@@ -1,13 +1,13 @@
-# A raiz do repositório contém somente os quatro módulos e estes arquivos de controle.
+# A raiz contém só os módulos versionados e estes arquivos; o resto
+# (dados de missões, logs, exports, ambientes) fica local.
 /*
 !/.gitignore
 !/README.md
 !/PIPELINE.md
-!/raspberry/
 !/server/
 !/webApp/
 
-# Dependências e artefatos locais de desenvolvimento
+# Dependências e artefatos de desenvolvimento
 **/.venv/
 **/venv/
 **/node_modules/
@@ -18,10 +18,6 @@
 **/.env
 **/.env.*
 !**/.env.example
-
-# Dados gerados durante captura e execução; as matrizes de calibração
-# alignment/alignment.npy e raspberry/alignment.npy permanecem versionadas.
-/raspberry/data/
 
 # Dados do módulo simulado (server/tools/mock_module.py)
 /server/tools/.mock_data/
