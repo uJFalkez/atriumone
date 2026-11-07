@@ -34,8 +34,11 @@ function buildMissions(data: DataPayload, liveId: string | null): MissionView[] 
 
   const view = (id: string, entries: EntrySummary[], extra: Partial<MissionView>): MissionView => {
     const ordered = [...entries].sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0) || (Date.parse(a.timestamp || "") || 0) - (Date.parse(b.timestamp || "") || 0));
-    const withNdvi = ordered.filter((e) => e.ndvi);
-    const clusters = clusterHotspots(ordered);
+    // Médias, focos e área só com as fotos do levantamento (fora: chão,
+    // decolagem/pouso, RGB estourada). Todas continuam na lista de capturas.
+    const survey = ordered.filter((e) => e.survey);
+    const withNdvi = survey.filter((e) => e.ndvi);
+    const clusters = clusterHotspots(survey);
     return {
       id,
       index: null,
@@ -48,7 +51,7 @@ function buildMissions(data: DataPayload, liveId: string | null): MissionView[] 
       hotspots: clusters.length,
       severe: clusters.filter((c) => c.severity === "alta").length,
       meanNdvi: withNdvi.length ? withNdvi.reduce((s, e) => s + e.ndvi!.mean, 0) / withNdvi.length : null,
-      areaM2: coveredArea(ordered.flatMap((e) => (e.footprint ? [e.footprint] : []))),
+      areaM2: coveredArea(survey.flatMap((e) => (e.footprint ? [e.footprint] : []))),
       processing: ordered.filter((e) => e.status === "processing").length,
       track: null,
       registered: false,
@@ -292,7 +295,7 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
         <main className="stage">
           <MapView
             station={data.station}
-            entries={mission?.entries ?? []}
+            entries={mission?.entries.filter((e) => e.survey) ?? []}
             clusters={mission?.clusters ?? []}
             selectedEntryId={entry?.id ?? null}
             selectedHotspot={hotspot}

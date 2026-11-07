@@ -123,6 +123,12 @@ export function CaptureDetail({
 
       <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} />
 
+      {!entry.survey && entry.status === "processed" && (
+        <div className="notice"><Icon name="alert" size={14} />Fora do levantamento: {entry.flags.join(", ")}. Não entra no mapa, nos focos nem nas médias.</div>
+      )}
+      {entry.survey && entry.alignmentUncertain && (
+        <div className="notice"><Icon name="alert" size={14} />Módulo girando na captura: alinhamento RGB/NIR incerto (até ~20 px), o NDVI pode ter artefatos nas bordas.</div>
+      )}
       {entry.position?.source === "imu" && (
         <div className="notice"><Icon name="alert" size={14} />Posição estimada só pela IMU (sem fix GPS){entry.position.sigma_m != null ? `, ±${fmt.number(entry.position.sigma_m, 0)} m` : ""}. Pegada e focos podem estar deslocados no mapa.</div>
       )}
@@ -251,7 +257,7 @@ export function MissionOverview({
   onSelectHotspot: (entryId: string, id: number) => void;
   now: number;
 }) {
-  const processed = mission.entries.filter((e) => e.ndvi);
+  const processed = mission.entries.filter((e) => e.ndvi && e.survey);
   const bySeverity = { alta: 0, media: 0, baixa: 0 } as Record<Severity, number>;
   mission.clusters.forEach((c) => bySeverity[c.severity]++);
   const top = mission.clusters.slice(0, 8); // já ordenados por severidade e queda

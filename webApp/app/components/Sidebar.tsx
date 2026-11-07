@@ -120,6 +120,7 @@ export function Sidebar({
                   <span className="capture-meta">
                     {entry.status === "processing" && <span className="tag">processando</span>}
                     {entry.status === "error" && <span className="tag tag-error">erro</span>}
+                    {entry.status === "processed" && !entry.survey && <span className="tag" title={entry.flags.join(", ")}>fora</span>}
                     {entry.hotspots.length > 0 && (
                       <span className={`hotspot-count ${severe ? "severe" : ""}`}><Icon name="target" size={12} />{entry.hotspots.length}</span>
                     )}

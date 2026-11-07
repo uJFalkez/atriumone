@@ -25,7 +25,7 @@ import numpy as np
 import config
 
 
-ANALYSIS_VERSION = 1
+ANALYSIS_VERSION = 2
 
 
 # ============================================================
@@ -528,7 +528,12 @@ def process_entry(entry_dir: Path) -> dict:
     os.replace(buffer_path, entry_dir / "ndvi.npy")
 
     geo = Georeference(metadata, full_w, full_h)
-    hotspots, detection = detect_hotspots(ndvi, valid, geo.gsd_m if geo.ok else None)
+    quality = assess_quality(metadata, rgb_crop)
+    if quality["survey"]:
+        hotspots, detection = detect_hotspots(ndvi, valid, geo.gsd_m if geo.ok else None)
+    else:
+        # Fora do levantamento (chão, decolagem/pouso, RGB estourada): sem focos.
+        hotspots, detection = [], {"vegetation_threshold": None, "drop_threshold": None, "candidates": 0, "bimodal": None, "skipped": True}
 
     warnings = []
     footprint = None
@@ -574,10 +579,38 @@ def process_entry(entry_dir: Path) -> dict:
             "camera_hfov_deg": config.CAMERA_HFOV_DEG,
         },
         "warnings": warnings,
+        "quality": quality,
     }
     _write_json(entry_dir / "analysis.json", analysis)
     (entry_dir / "error.json").unlink(missing_ok=True)
     return analysis
+
+
+def assess_quality(metadata, rgb_crop):
+    """Classifica a foto: entra no levantamento (focos, médias, mapa) ou não.
+
+    survey = False quando a foto não representa o levantamento aéreo:
+    abaixo da altura mínima (chão, decolagem, pouso) ou RGB estourada.
+    alignment_uncertain = True quando o módulo girava rápido na captura
+    (as duas câmeras não registram a cena no mesmo instante).
+    """
+    reasons = []
+    height = (metadata.get("position") or {}).get("height_m")
+    if height is None or height < config.MIN_SURVEY_HEIGHT_M:
+        reasons.append("abaixo da altura mínima de levantamento")
+    gray = cv2.cvtColor(cv2.resize(rgb_crop, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY)
+    saturated = float((gray >= 250).mean())
+    if saturated > config.MAX_RGB_SATURATED:
+        reasons.append("RGB estourada")
+    angular = (metadata.get("stability") or {}).get("angular_speed_rad_s")
+    return {
+        "survey": not reasons,
+        "reasons": reasons,
+        "alignment_uncertain": angular is not None and angular > config.MAX_ANGULAR_SPEED,
+        "rgb_saturated": round(saturated, 4),
+        "angular_speed_rad_s": angular,
+        "height_m": height,
+    }
 
 
 def _polygon_area_m2(points):

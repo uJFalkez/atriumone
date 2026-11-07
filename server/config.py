@@ -60,6 +60,14 @@ HOTSPOT_MIN_FILL = 0.25
 HOTSPOT_MAX_COUNT = 60
 
 # ============================================================
+# Qualidade: quais fotos entram no levantamento
+# ============================================================
+
+MIN_SURVEY_HEIGHT_M = 5.0   # abaixo disso: chão, decolagem ou pouso
+MAX_RGB_SATURATED = 0.05    # fração de pixels >= 250 na RGB
+MAX_ANGULAR_SPEED = 0.15    # rad/s; acima disso o alinhamento RGB/NIR fica incerto
+
+# ============================================================
 # Pré-visualizações para o dashboard
 # ============================================================
 

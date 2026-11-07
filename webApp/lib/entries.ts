@@ -123,6 +123,10 @@ async function summarize(id: string): Promise<EntrySummary> {
       ? { width: num(crop.x2)! - (num(crop.x1) ?? 0), height: num(crop.y2)! - (num(crop.y1) ?? 0) }
       : null,
     version: String(Math.round(analysisTime || errorTime || metaTime)),
+    // Sem análise de qualidade (processando/erro), conta como dentro até saber.
+    survey: analysis ? obj(analysis.quality).survey !== false : true,
+    flags: Array.isArray(obj(analysis?.quality).reasons) ? (obj(analysis?.quality).reasons as string[]) : [],
+    alignmentUncertain: obj(analysis?.quality).alignment_uncertain === true,
   };
   cache.set(id, { key, summary });
   return summary;

@@ -47,6 +47,9 @@ export type EntrySummary = {
   areaM2: number | null;
   crop: { width: number; height: number } | null;
   version: string; // muda quando a entrada é (re)processada
+  survey: boolean; // entra no levantamento (mapa, focos, médias)
+  flags: string[]; // motivos de ficar fora do levantamento
+  alignmentUncertain: boolean; // módulo girando na captura
 };
 
 export type MissionRecord = {
