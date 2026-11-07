@@ -1,4 +1,4 @@
-// Tipos compartilhados entre servidor e cliente. Ver server/CONTRATO.md.
+// Tipos compartilhados entre servidor e cliente. Ver docs/CONTRATO.md.
 
 export type Station = { latitude: number; longitude: number; name?: string | null };
 

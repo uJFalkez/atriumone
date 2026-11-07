@@ -1,9 +1,9 @@
-# A raiz contém só os módulos versionados e estes arquivos; o resto
-# (dados de missões, logs, exports, ambientes) fica local.
+# Versionados na raiz: module/ (Raspberry Pi), server/ (estação: API e
+# processamento), webApp/ (dashboard) e este README.
 /*
 !/.gitignore
 !/README.md
-!/PIPELINE.md
+!/module/
 !/server/
 !/webApp/
 

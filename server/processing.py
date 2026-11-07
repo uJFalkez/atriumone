@@ -9,7 +9,7 @@ Saídas geradas aqui:
     preview/thumb.jpg   miniatura
 analysis.json é gravado por último e marca a entrada como processada.
 Em caso de falha, error.json registra o motivo.
-Formato de metadata.json e georreferenciamento: ver CONTRATO.md.
+Formato de metadata.json e georreferenciamento: ver docs/CONTRATO.md.
 """
 
 import json
@@ -78,11 +78,11 @@ _matrices = {}
 
 
 def base_matrix(focus=None):
-    """Matriz calibrada para a posição de foco da RGB (ou a padrão).
+    """Matriz calibrada para o valor de foco reportado da RGB (ou a padrão).
 
-    A Arducam tem foco motorizado: mudar o foco move a lente e altera a
-    ampliação e o centro óptico, então cada posição de foco tem sua calibração
-    (config.ALIGNMENT_BY_FOCUS). Retorna (matriz, nome do arquivo).
+    Nas missões de 06/11, o foco reportado separa dois grupos com relação
+    RGB/NIR diferente (ver config.ALIGNMENT_BY_FOCUS e a ressalva sobre a
+    causa). Retorna (matriz, nome do arquivo).
     """
     path = Path(config.ALIGNMENT_BY_FOCUS.get(focus, config.ALIGNMENT_PATH))
     if path not in _matrices:

@@ -1,4 +1,4 @@
-"""Módulo simulado: implementa a API do módulo descrita em CONTRATO.md.
+"""Módulo simulado: implementa a API do módulo descrita em docs/CONTRATO.md.
 
 Serve para desenvolver e demonstrar a estação (dashboard + ingestão) sem o
 Raspberry Pi. Não substitui nem compartilha código com o software do módulo.

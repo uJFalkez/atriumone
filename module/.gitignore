@@ -1,0 +1,5 @@
+# Compilados (make) e dados gerados no Pi
+build/
+data/
+logs/
+*.pid

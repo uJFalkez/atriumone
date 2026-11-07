@@ -1,0 +1,25 @@
+[Unit]
+Description=Atrium One navigation daemon (IMU, mag, GPS; sole owner of I2C and UART)
+After=local-fs.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=pi3b
+Group=pi3b
+SupplementaryGroups=i2c dialout gpio
+WorkingDirectory=/home/pi3b/project
+ExecStart=/home/pi3b/project/build/navd
+Restart=always
+RestartSec=2
+# navd locks its memory (mlockall) so the 50 Hz loop is never swapped out.
+LimitMEMLOCK=infinity
+# A little priority over everything else on the Pi (set by systemd before dropping root).
+Nice=-5
+TimeoutStopSec=10
+# Logs go to journald (volatile on this system: nothing written to the slow pen drive).
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

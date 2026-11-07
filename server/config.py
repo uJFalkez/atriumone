@@ -7,8 +7,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ENTRIES_DIR = Path(os.environ.get("ENTRIES_DIR", PROJECT_ROOT / "entries")).resolve()
 MISSIONS_DIR = Path(os.environ.get("MISSIONS_DIR", PROJECT_ROOT / "missions")).resolve()
 CALIBRATION_DIR = Path(__file__).resolve().parent / "calibration"
-# Matriz padrão (foco 144 da RGB) e matrizes por posição de foco da Arducam:
-# mudar o foco move a lente e muda a relação entre as câmeras.
+# Matriz padrão (foco 144 da RGB) e matrizes por valor de foco reportado.
+# Nas missões de 06/11 a relação RGB/NIR mudou ~50 px entre as missões 08/09
+# (focus=57) e a 10 (focus=144), e o foco reportado separa exatamente os dois
+# grupos. A causa física não foi confirmada: o módulo registra que o controle
+# de foco da Arducam não tem efeito, então pode ter sido o módulo mexido entre
+# os voos. Para dados novos, recalibre com alvos em vez de confiar no foco.
 ALIGNMENT_PATH = Path(os.environ.get("ALIGNMENT_PATH", CALIBRATION_DIR / "alignment.npy"))
 ALIGNMENT_BY_FOCUS = {
     144: CALIBRATION_DIR / "alignment.npy",        # missão 10 (719bc165), afim completa com alvos

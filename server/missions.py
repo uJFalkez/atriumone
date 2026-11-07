@@ -1,6 +1,6 @@
 """Registro de missões enviado pelo módulo: mission.json + track.csv.
 
-Ver CONTRATO.md, seção "POST /mission".
+Ver docs/CONTRATO.md, seção "POST /mission".
 """
 
 import csv

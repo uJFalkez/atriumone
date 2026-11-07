@@ -1,0 +1,25 @@
+[Unit]
+Description=Atrium One mission daemon (API :8000, cameras, queue, upload)
+Wants=navd.service
+After=navd.service network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=pi3b
+Group=pi3b
+SupplementaryGroups=video
+WorkingDirectory=/home/pi3b/project
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/pi3b/project/mission/missiond.py
+Restart=always
+RestartSec=2
+# The uploader and rpicam-still are children: stopping or restarting missiond takes them down
+# too (default control-group kill), so no orphan is left SIGSTOPped.
+KillMode=control-group
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
