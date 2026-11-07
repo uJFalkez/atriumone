@@ -61,9 +61,9 @@ CAMERA_YAW_OFFSET_DEG = float(os.environ.get("CAMERA_YAW_OFFSET_DEG", 0.0))
 # ============================================================
 
 HOTSPOT_WORK_WIDTH = 1000          # resolução de trabalho (px de largura)
-HOTSPOT_MIN_DROP = 0.08            # queda mínima de NDVI frente ao entorno
+HOTSPOT_MIN_DROP = 0.12            # queda mínima de NDVI frente ao entorno (0,08 deixava passar textura)
 HOTSPOT_SIGMA_FACTOR = 2.0         # queda mínima também >= k * dispersão da vegetação
-HOTSPOT_MIN_AREA_M2 = 0.3
+HOTSPOT_MIN_AREA_M2 = 0.05         # ~uma folha A4; ajustado com as missões 08–10
 HOTSPOT_MAX_AREA_M2 = 20.0        # "pontos pequenos": ~5 m de diâmetro
 HOTSPOT_MIN_AREA_PX = 25           # sem altitude: limites em pixels de trabalho
 HOTSPOT_MAX_IMAGE_FRACTION = 0.015
