@@ -11,13 +11,14 @@ usada com cv2.WARP_INVERSE_MAP). Depois de gerar, ajuste ALIGNMENT_RGB_SIZE em
 server/config.py para a resolução da RGB usada aqui e rode reprocess.py --all.
 
 Uso (de dentro de server/):
-    python tools/align_targets.py ../entries <mission_id (prefixo)> calibration/alignment.npy
-        [--max-angular 0.15] [--relative-to calibration/alignment.npy]
+    python tools/align_targets.py ../entries <mission_id (prefixo)> calibration/alignment_<missão>.npy
+        [--max-angular 0.15] [--relative-to calibration/alignment_missao10.npy]
 
 --relative-to: em vez da afim livre (6 parâmetros), ajusta só escala uniforme
 e translação sobre a parte linear de outra calibração. Use quando houver poucos
 alvos (ex.: um por foto), caso em que a afim livre não fica bem determinada.
-Foi assim que se gerou calibration/alignment_focus57.npy (missão 6b93dceb).
+Foi assim que se gerou calibration/alignment_missao09.npy (missão 6b93dceb,
+relativa a calibration/alignment_missao10.npy).
 """
 
 import argparse

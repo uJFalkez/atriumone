@@ -77,14 +77,18 @@ def _get(source, *keys):
 _matrices = {}
 
 
-def base_matrix(focus=None):
-    """Matriz calibrada para o valor de foco reportado da RGB (ou a padrão).
+def base_matrix(mission_id=None):
+    """Matriz calibrada para a missão (ou a padrão). Retorna (matriz, arquivo).
 
-    Nas missões de 06/11, o foco reportado separa dois grupos com relação
-    RGB/NIR diferente (ver config.ALIGNMENT_BY_FOCUS e a ressalva sobre a
-    causa). Retorna (matriz, nome do arquivo).
+    A relação RGB/NIR muda quando o módulo é mexido entre voos; por isso a
+    calibração é por missão (config.ALIGNMENT_BY_MISSION, por prefixo do id).
     """
-    path = Path(config.ALIGNMENT_BY_FOCUS.get(focus, config.ALIGNMENT_PATH))
+    path = config.ALIGNMENT_PATH
+    for prefix, candidate in config.ALIGNMENT_BY_MISSION.items():
+        if mission_id and mission_id.startswith(prefix):
+            path = candidate
+            break
+    path = Path(path)
     if path not in _matrices:
         matrix = np.load(path).astype(np.float32)
         if matrix.shape != (2, 3):
@@ -581,10 +585,9 @@ def process_entry(entry_dir: Path) -> dict:
 
     full_h, full_w = rgb.shape[:2]
     nir = cv2.resize(nir, (full_w, full_h), interpolation=cv2.INTER_LINEAR)
-    focus = _get(metadata, "camera", "rgb", "focus")
-    base, base_name = base_matrix(focus)
+    base, base_name = base_matrix(metadata.get("mission_id"))
     matrix, alignment = refine_alignment(rgb, nir, matrix_for(full_w, full_h, base))
-    alignment.update({"base": base_name, "focus": focus, "matrix": np.round(matrix, 6).tolist()})
+    alignment.update({"base": base_name, "matrix": np.round(matrix, 6).tolist()})
     nir_aligned = align_nir(nir, full_w, full_h, matrix)
     del nir
 

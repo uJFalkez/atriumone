@@ -122,9 +122,10 @@ dados ficam em `entries/<uuid>/` e `missions/<uuid>/` na raiz do projeto
 Processamento de cada foto (`processing.py`), com resultado em
 `analysis.json`, `ndvi.npy` e `preview/`:
 
-1. **Alinhamento NIR→RGB:** matriz afim calibrada com alvos no chão
-   (`calibration/`), escolhida pelo foco reportado da RGB, e refinada por foto
-   com ECC dentro de limites plausíveis. Erro medido nos alvos: ~1,9 px.
+1. **Alinhamento NIR→RGB:** matriz afim calibrada por missão com alvos no
+   chão (`calibration/`; a relação entre as câmeras muda se o módulo for
+   mexido entre voos) e refinada por foto com ECC dentro de limites
+   plausíveis. Erro medido nos alvos: ~1,9 px.
 2. **NDVI** na região coberta pelas duas câmeras.
 3. **Qualidade:** ficam fora do levantamento (sem focos, fora do mapa e das
    médias) as fotos abaixo de 5 m e as com RGB estourada.

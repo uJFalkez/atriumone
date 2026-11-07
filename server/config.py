@@ -7,16 +7,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ENTRIES_DIR = Path(os.environ.get("ENTRIES_DIR", PROJECT_ROOT / "entries")).resolve()
 MISSIONS_DIR = Path(os.environ.get("MISSIONS_DIR", PROJECT_ROOT / "missions")).resolve()
 CALIBRATION_DIR = Path(__file__).resolve().parent / "calibration"
-# Matriz padrão (foco 144 da RGB) e matrizes por valor de foco reportado.
-# Nas missões de 06/11 a relação RGB/NIR mudou ~50 px entre as missões 08/09
-# (focus=57) e a 10 (focus=144), e o foco reportado separa exatamente os dois
-# grupos. A causa física não foi confirmada: o módulo registra que o controle
-# de foco da Arducam não tem efeito, então pode ter sido o módulo mexido entre
-# os voos. Para dados novos, recalibre com alvos em vez de confiar no foco.
-ALIGNMENT_PATH = Path(os.environ.get("ALIGNMENT_PATH", CALIBRATION_DIR / "alignment.npy"))
-ALIGNMENT_BY_FOCUS = {
-    144: CALIBRATION_DIR / "alignment.npy",        # missão 10 (719bc165), afim completa com alvos
-    57: CALIBRATION_DIR / "alignment_focus57.npy", # missão 09 (6b93dceb), escala+translação sobre a de 144
+# Calibração do alinhamento RGB/NIR por missão. A relação entre as câmeras
+# muda se o módulo for mexido entre voos: nas missões de 06/11, as 08 e 09
+# compartilham a mesma relação (a 08 não tem alvos; as correções por foto
+# dela ficam a ~4,5 px da base da 09) e a 10 é diferente (~50 px). Missões não
+# listadas usam a matriz padrão; em todas, a correção por foto (ECC) ajusta o
+# restante. Para dados novos, calibre a missão com alvos (tools/align_targets.py).
+ALIGNMENT_PATH = Path(os.environ.get("ALIGNMENT_PATH", CALIBRATION_DIR / "alignment_missao10.npy"))
+ALIGNMENT_BY_MISSION = {
+    "1a842849": CALIBRATION_DIR / "alignment_missao09.npy",  # missão 08: sem alvos, mesma montagem da 09
+    "6b93dceb": CALIBRATION_DIR / "alignment_missao09.npy",  # missão 09: escala+translação sobre a da 10, com alvos
+    "719bc165": CALIBRATION_DIR / "alignment_missao10.npy",  # missão 10: afim completa com alvos
 }
 
 # Correção por foto (ECC) sobre a calibração, com limites de plausibilidade.
