@@ -288,8 +288,8 @@ Valores sem leitura vão como `null`; não omita os campos obrigatórios.
   - NIR Pi Camera V2 NoIR: **1640×1232** (binning 2×2, mesmo campo de visão de
     3280×2464, HFOV 62,2°).
 
-  A estação usa o HFOV da câmera **RGB**, ≈ 63,6°, estimado a partir da matriz
-  de alinhamento. O HFOV não depende da resolução: a distância focal em
+  A estação usa o HFOV da câmera **RGB**, ≈ 60,8°, estimado a partir da matriz
+  de alinhamento calibrada com alvos no chão. O HFOV não depende da resolução: a distância focal em
   pixels é calculada para a largura de cada foto.
 - **Calibração dos sensores:** os valores já chegam corrigidos pela
   calibração (o oito). A estação não aplica nenhuma correção.

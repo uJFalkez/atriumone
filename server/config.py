@@ -18,10 +18,11 @@ ALIGNMENT_PATH = Path(
 
 CROP_MARGIN_PX = 8
 
-# Resolução da RGB usada para calcular alignment.npy (alignment/align.py).
+# Resolução da RGB usada para calcular alignment.npy (alignment/align_targets.py,
+# com alvos no chão, missão 719bc165 de 06/11/2026).
 # Fotos em outra resolução (mesmo campo de visão, reescaladas) têm a matriz
 # convertida automaticamente. Atualize se recalibrar em outra resolução.
-ALIGNMENT_RGB_SIZE = (3264, 2448)
+ALIGNMENT_RGB_SIZE = (1600, 1200)
 
 # Pixels com NIR + R abaixo disso são escuros demais para um NDVI confiável.
 NDVI_MIN_SIGNAL = 20
@@ -34,11 +35,12 @@ NDVI_MIN_SIGNAL = 20
 # rumo é 0 e só serve para corrigir uma montagem fora do padrão.
 #
 # HFOV da Arducam 8MP USB estimado pela matriz de alinhamento: a escala RGB→NIR
-# (~1,027) e o FOV conhecido da Pi Camera V2 (62,2° × 48,8°) dão f_RGB ≈ 2634 px
-# nas duas direções, ou seja, HFOV ≈ 63,6°. Substitua se medir a lente.
+# (0,961 / 0,981 com a NIR redimensionada para 1600x1200) e o FOV conhecido da
+# Pi Camera V2 (62,2° × 48,8°) dão f_RGB ≈ 1380 / 1347 px em 1600 px de
+# largura, ou seja, HFOV ≈ 60,8°. Substitua se medir a lente.
 # ============================================================
 
-CAMERA_HFOV_DEG = float(os.environ.get("CAMERA_HFOV_DEG", 63.6))
+CAMERA_HFOV_DEG = float(os.environ.get("CAMERA_HFOV_DEG", 60.8))
 CAMERA_YAW_OFFSET_DEG = float(os.environ.get("CAMERA_YAW_OFFSET_DEG", 0.0))
 
 # ============================================================
