@@ -325,7 +325,7 @@ button.module-pill:hover { border-color: var(--line-3); }
 .sidebar-empty strong { color: var(--text-2); font-weight: 600; }
 .sidebar-empty em { font-style: normal; color: var(--accent); }
 
-.capture-list { overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding-right: 2px; }
+.capture-list { scrollbar-gutter: stable; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding-right: 2px; }
 .capture-row {
   display: flex; align-items: center; gap: 11px; padding: 6px; border-radius: 10px; text-align: left;
   transition: background .15s;
@@ -507,7 +507,7 @@ button.module-pill:hover { border-color: var(--line-3); }
    Painel direito
    ============================================================ */
 
-.inspector { background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; }
+.inspector { background: var(--surface); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; scrollbar-gutter: stable; }
 .detail { padding: 18px 18px 28px; display: flex; flex-direction: column; gap: 16px; animation: fade-in .25s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } }
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -536,6 +536,11 @@ button.module-pill:hover { border-color: var(--line-3); }
   user-select: none; touch-action: none;
 }
 .viewer-stage.mode-compare { cursor: ew-resize; }
+.viewer-canvas { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
+.viewer-stage.can-expand { cursor: zoom-in; }
+.viewer-stage.zoomed { cursor: grab; }
+.viewer-stage.zoomed:active { cursor: grabbing; }
+.viewer-stage.mode-compare.zoomed .split-handle span { pointer-events: none; }
 .viewer-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s ease; }
 .viewer-stage img.ready { opacity: 1; }
 .viewer-stage .ndvi-layer { transition: opacity .35s ease, clip-path .25s ease; }
@@ -568,7 +573,37 @@ button.module-pill:hover { border-color: var(--line-3); }
 .stage-label.left { left: 10px; }
 .stage-label.right { right: 10px; }
 .stage-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); gap: 8px; }
-.viewer-toolbar { display: flex; align-items: center; justify-content: space-between; }
+.viewer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.viewer-actions { display: flex; align-items: center; gap: 8px; }
+.zoom-controls button { min-width: 30px; padding: 0 8px; }
+.zoom-controls button:disabled { opacity: .45; cursor: default; }
+.stage-btn {
+  position: absolute; right: 10px; bottom: 10px; width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center; color: var(--text); background: rgba(7, 13, 11, .7);
+  border: 1px solid rgba(255, 255, 255, .12); opacity: .8; transition: opacity .15s, background .15s;
+}
+.stage-btn:hover { opacity: 1; background: rgba(7, 13, 11, .9); }
+.zoom-chip { position: absolute; right: 10px; bottom: 10px; padding: 3px 8px; border-radius: 6px; font-size: 11px; background: rgba(7, 13, 11, .7); color: var(--text-2); pointer-events: none; }
+.res-line { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: -6px; font-size: 11px; color: var(--text-3); }
+.res-line b { font: 600 10px var(--font); letter-spacing: .1em; color: var(--text-3); opacity: .7; margin-right: 4px; }
+
+/* ===== Visualizador ampliado ===== */
+
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column;
+  background: rgba(5, 9, 8, .97); backdrop-filter: blur(8px); animation: fade-in .2s ease;
+}
+.lightbox-bar { display: flex; align-items: center; gap: 24px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+.lightbox-title { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
+.lightbox-title strong { font: 750 20px var(--display); display: flex; align-items: baseline; gap: 8px; }
+.lightbox-title small { font: 500 12px var(--font); color: var(--text-3); }
+.lightbox-facts { flex: 1; display: flex; flex-wrap: wrap; gap: 6px 26px; }
+.lightbox-facts dt { font-size: 10.5px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; }
+.lightbox-facts dd { font-size: 13.5px; color: var(--text); }
+.lightbox-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px 22px 12px; }
+.lightbox-body .viewer { width: 100%; align-items: center; }
+.lightbox-body .viewer-stage, .lightbox-body .viewer-toolbar { width: var(--fit-w); max-width: 100%; }
+.lightbox-hint { font-size: 11px; color: var(--text-3); text-align: center; }
 .segmented { display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
 .segmented button { height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12px; font-weight: 600; color: var(--text-3); transition: background .2s, color .2s; }
 .segmented button:hover { color: var(--text); }
@@ -723,6 +758,34 @@ button.module-pill:hover { border-color: var(--line-3); }
 /* ===== Instrumentos ===== */
 
 .instruments { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ===== Telemetria ===== */
+
+.tele-section { display: flex; flex-direction: column; gap: 8px; }
+.tele-section + .tele-section { margin-top: 4px; }
+.panel-title span { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 6px; opacity: .8; }
+.tele-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border-radius: 12px; overflow: hidden; background: var(--line); border: 1px solid var(--line); }
+.tele-cell { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: var(--surface-2); }
+.tele-cell span { font-size: 11px; color: var(--text-3); }
+.tele-cell strong { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.tele-cell strong small { font: 500 11px var(--font); color: var(--text-3); margin-left: 3px; }
+.tele-cell.warn strong { color: var(--warn); }
+.tele-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--text-3); }
+.tele-foot strong { color: var(--text); font-weight: 500; margin-left: 4px; }
+.tele-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; font-size: 11.5px; color: var(--text-2); background: rgba(156, 240, 198, .07); border: 1px solid rgba(156, 240, 198, .14); }
+.tele-chip.warn { color: #f5d38a; background: rgba(250, 178, 25, .07); border-color: rgba(250, 178, 25, .18); }
+.tele-note { font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+.tele-note strong { color: var(--text-2); font-weight: 500; }
+.cam-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 12px; }
+.cam-table th, .cam-table td { padding: 8px 10px; text-align: right; background: var(--surface-2); }
+.cam-table tr + tr > * { border-top: 1px solid var(--line); }
+.cam-table thead th { font-size: 10.5px; letter-spacing: .12em; color: var(--text-3); font-weight: 600; background: var(--surface-3); }
+.cam-table tbody th { text-align: left; font-weight: 400; color: var(--text-3); }
+.cam-table td { color: var(--text); white-space: nowrap; }
+.raw-meta summary { cursor: pointer; font-size: 12px; color: var(--text-3); padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+.raw-meta summary:hover { color: var(--text-2); }
+.raw-meta .count { font: 11px var(--mono); padding: 1px 6px; border-radius: 5px; background: var(--surface-3); }
+.raw-meta .kv dt { font-size: 11px; }
 .instrument { padding: 12px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .instrument svg { width: 100%; max-width: 132px; }
 .instrument.unavailable svg { opacity: .3; filter: grayscale(1); }

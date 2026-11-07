@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { fmt } from "../../lib/format";
 import { ndviColor, SEVERITY } from "../../lib/scale";
 import type { Analysis, EntrySummary, Severity } from "../../lib/types";
@@ -39,6 +40,223 @@ function flatten(value: Record<string, unknown>, prefix = ""): [string, unknown]
   );
 }
 
+type Json = Record<string, unknown>;
+const obj = (v: unknown): Json | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : null);
+const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const dims = (c: Json | null) => (num(c?.width) && num(c?.height) ? `${c!.width} × ${c!.height}` : null);
+
+// Resolução de cada câmera (pelo metadata; a RGB cai para o tamanho processado).
+function resolutions(metadata: Json | null, analysis: Analysis | null, entry: EntrySummary) {
+  const camera = obj(metadata?.camera);
+  return {
+    rgb: dims(obj(camera?.rgb)) ?? (analysis ? `${analysis.image.width} × ${analysis.image.height}` : null),
+    nir: dims(obj(camera?.nir)),
+    crop: entry.crop ? `${entry.crop.width} × ${entry.crop.height}` : null,
+  };
+}
+
+const YAW_SOURCE: Record<string, string> = {
+  mag_uncalibrated: "magnetômetro sem calibração",
+  mag: "magnetômetro",
+  mag_calibrated: "magnetômetro calibrado",
+  gyro: "giroscópio (relativo)",
+  gps_course: "curso do GPS",
+};
+
+function Cell({ label, value, unit, tone }: { label: string; value: React.ReactNode; unit?: string; tone?: "warn" }) {
+  return (
+    <div className={`tele-cell ${tone ?? ""}`}>
+      <span>{label}</span>
+      <strong className="mono">{value}{unit && <small>{unit}</small>}</strong>
+    </div>
+  );
+}
+
+function Telemetry({ entry, metadata }: { entry: EntrySummary; metadata: Json | null }) {
+  const pos = entry.position;
+  const o = entry.orientation;
+  const vel = obj(metadata?.velocity);
+  const stab = obj(metadata?.stability);
+  const camera = obj(metadata?.camera);
+  const rgb = obj(camera?.rgb);
+  const nir = obj(camera?.nir);
+  const vn = num(vel?.north_m_s), ve = num(vel?.east_m_s), vu = num(vel?.up_m_s);
+  const horizontal = vn !== null && ve !== null ? Math.hypot(vn, ve) : null;
+  const angular = num(stab?.angular_speed_rad_s);
+  const yawSource = typeof metadata?.yaw_source === "string" ? metadata.yaw_source : null;
+  const gains = Array.isArray(nir?.colour_gains) ? (nir!.colour_gains as number[]) : null;
+
+  const known = new Set(["schema", "id", "mission_id", "sequence", "timestamp", "position", "orientation", "velocity", "stability", "camera", "yaw_source", "mounting_measured"]);
+  const extra = metadata ? flatten(Object.fromEntries(Object.entries(metadata).filter(([k]) => !known.has(k)))) : [];
+
+  const camRows: [string, React.ReactNode, React.ReactNode][] = [
+    ["Resolução", dims(rgb) ?? "—", dims(nir) ?? "—"],
+    ["Exposição", num(rgb?.exposure_us) !== null ? `${fmt.number(num(rgb?.exposure_us)! / 1000, 2)} ms` : "—", num(nir?.exposure_us) !== null ? `${fmt.number(num(nir?.exposure_us)! / 1000, 2)} ms` : "—"],
+    [
+      "Ganho",
+      num(rgb?.gain) !== null ? fmt.number(num(rgb?.gain), 0) : "—",
+      num(nir?.analogue_gain) !== null ? `${fmt.number(num(nir?.analogue_gain), 2)} × ${fmt.number(num(nir?.digital_gain) ?? 1, 2)}` : "—",
+    ],
+    [
+      "Balanço de branco",
+      num(rgb?.white_balance_k) !== null ? `${rgb!.white_balance_k} K${rgb?.white_balance_auto === false ? " fixo" : ""}` : rgb?.white_balance_auto ? "auto" : "—",
+      gains ? `R ${fmt.number(gains[0], 1)} · B ${fmt.number(gains[1], 1)}${nir?.awb_fixed ? " fixo" : ""}` : "—",
+    ],
+    ["Foco", num(rgb?.focus) !== null ? String(rgb!.focus) : "—", "fixo"],
+  ];
+
+  return (
+    <>
+      <section className="tele-section">
+        <h3 className="panel-title">Posição <span>relativa à estação</span></h3>
+        <div className="tele-grid">
+          <Cell label="Norte" value={fmt.number(pos?.north_m, 1)} unit="m" />
+          <Cell label="Leste" value={fmt.number(pos?.east_m, 1)} unit="m" />
+          <Cell label="Altura" value={fmt.number(pos?.height_m, 1)} unit="m" />
+        </div>
+        <div className="tele-foot">
+          <span>
+            Distância <strong className="mono">{pos?.north_m != null && pos.east_m != null ? `${fmt.number(Math.hypot(pos.north_m, pos.east_m), 1)} m` : "—"}</strong>
+          </span>
+          <span className={`tele-chip ${pos?.source === "imu" ? "warn" : ""}`}>
+            <Icon name={pos?.source === "imu" ? "alert" : "satellite"} size={12} />
+            {pos?.source === "imu" ? "só IMU (sem GPS)" : pos?.source === "gps+imu" ? "GPS + IMU" : "fonte desconhecida"}
+            {pos?.sigma_m != null ? ` · ±${fmt.number(pos.sigma_m, 1)} m` : ""}
+          </span>
+        </div>
+      </section>
+
+      <section className="tele-section">
+        <h3 className="panel-title">Atitude</h3>
+        <div className="instruments">
+          <AttitudeIndicator roll={o?.roll_deg ?? null} pitch={o?.pitch_deg ?? null} />
+          <Compass heading={o?.yaw_deg ?? null} />
+        </div>
+        {(yawSource || metadata?.mounting_measured === false) && (
+          <p className="tele-note">
+            {yawSource && <>Rumo pelo {YAW_SOURCE[yawSource] ?? yawSource}. </>}
+            {metadata?.mounting_measured === false && <>Montagem câmera↔IMU não medida.</>}
+          </p>
+        )}
+      </section>
+
+      {(vel || stab) && (
+        <section className="tele-section">
+          <h3 className="panel-title">Movimento na captura</h3>
+          <div className="tele-grid">
+            <Cell label="Horizontal" value={fmt.number(horizontal, 1)} unit="m/s" />
+            <Cell label={vu !== null && vu < 0 ? "Descendo" : "Subindo"} value={fmt.number(vu !== null ? Math.abs(vu) : null, 1)} unit="m/s" />
+            <Cell label="Rotação" value={fmt.number(angular !== null ? (angular * 180) / Math.PI : null, 1)} unit="°/s" tone={entry.alignmentUncertain ? "warn" : undefined} />
+          </div>
+        </section>
+      )}
+
+      {camera && (
+        <section className="tele-section">
+          <h3 className="panel-title">Câmeras</h3>
+          <table className="cam-table">
+            <thead><tr><th /><th>RGB</th><th>NIR</th></tr></thead>
+            <tbody>
+              {camRows.map(([label, a, b]) => (
+                <tr key={label}><th>{label}</th><td className="mono">{a}</td><td className="mono">{b}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {num(camera.rgb_nir_offset_ms) !== null && (
+            <p className="tele-note">Defasagem entre as câmeras: <strong className="mono">{fmt.number(num(camera.rgb_nir_offset_ms), 1)} ms</strong></p>
+          )}
+        </section>
+      )}
+
+      {extra.length > 0 && (
+        <details className="raw-meta">
+          <summary>Outros campos do metadata <span className="count">{extra.length}</span></summary>
+          <dl className="kv">
+            {extra.map(([k, v]) => (
+              <div key={k}><dt className="mono">{k}</dt><dd className="mono">{typeof v === "number" ? fmt.number(v, 3) : v === null ? "—" : String(v)}</dd></div>
+            ))}
+          </dl>
+        </details>
+      )}
+    </>
+  );
+}
+
+// ===== Visualizador ampliado =====
+
+function Lightbox({
+  entry,
+  analysis,
+  metadata,
+  title,
+  selectedHotspot,
+  onSelectHotspot,
+  onStep,
+  canPrev,
+  canNext,
+  onClose,
+}: {
+  entry: EntrySummary;
+  analysis: Analysis | null;
+  metadata: Json | null;
+  title: string;
+  selectedHotspot: number | null;
+  onSelectHotspot: (id: number) => void;
+  onStep: (delta: number) => void;
+  canPrev: boolean;
+  canNext: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    // Captura antes do atalho do painel: Esc fecha só o visualizador.
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopImmediatePropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", key, true);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", key, true);
+      document.body.style.overflow = overflow;
+    };
+  }, [onClose]);
+
+  const res = resolutions(metadata, analysis, entry);
+  const pos = entry.position;
+
+  return createPortal(
+    <div className="lightbox" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <header className="lightbox-bar">
+        <div className="lightbox-title">
+          <span className="eyebrow">{title}</span>
+          <strong>{fmt.time(entry.timestamp)}<small>{fmt.date(entry.timestamp)}</small></strong>
+        </div>
+        <dl className="lightbox-facts">
+          <div><dt>NDVI médio</dt><dd className="mono">{fmt.signed(entry.ndvi?.mean ?? null)}</dd></div>
+          <div><dt>Focos</dt><dd className="mono">{entry.status === "processed" ? entry.hotspots.length : "—"}</dd></div>
+          <div><dt>Altura</dt><dd className="mono">{fmt.number(pos?.height_m, 1)} m</dd></div>
+          <div><dt>GSD</dt><dd className="mono">{fmt.number(entry.gsdCm, 1)} cm/px</dd></div>
+          <div><dt>RGB</dt><dd className="mono">{res.rgb ?? "—"}</dd></div>
+          <div><dt>NIR</dt><dd className="mono">{res.nir ?? "—"}</dd></div>
+        </dl>
+        <div className="detail-nav">
+          <button className="icon-btn" onClick={() => onStep(-1)} disabled={!canPrev} aria-label="Foto anterior"><Icon name="left" size={16} /></button>
+          <button className="icon-btn" onClick={() => onStep(1)} disabled={!canNext} aria-label="Próxima foto"><Icon name="right" size={16} /></button>
+          <button className="icon-btn" onClick={onClose} aria-label="Fechar visualizador"><Icon name="x" size={16} /></button>
+        </div>
+      </header>
+      <div className="lightbox-body">
+        <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} expanded />
+        <p className="lightbox-hint">Roda do mouse para ampliar · arraste para mover · duplo clique volta ao tamanho original · ← → troca de foto · Esc fecha</p>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ===== Detalhe de uma foto =====
 
 type Tab = "analise" | "focos" | "telemetria" | "arquivos";
@@ -61,8 +279,9 @@ export function CaptureDetail({
   onClose: () => void;
 }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
-  const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null);
+  const [metadata, setMetadata] = useState<Json | null>(null);
   const [tab, setTab] = useState<Tab>("analise");
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +297,7 @@ export function CaptureDetail({
 
   useEffect(() => {
     let cancelled = false;
+    setMetadata(null);
     fetch(`/api/entries/${entry.id}/metadata.json`)
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => !cancelled && setMetadata(m))
@@ -102,16 +322,14 @@ export function CaptureDetail({
 
   const ndvi = analysis?.ndvi;
   const hotspots = analysis?.hotspots ?? [];
-  const pos = entry.position;
-  const orientation = entry.orientation;
-  const known = new Set(["schema", "id", "mission_id", "sequence", "timestamp", "position", "orientation"]);
-  const extra = metadata ? flatten(Object.fromEntries(Object.entries(metadata).filter(([k]) => !known.has(k)))) : [];
+  const res = resolutions(metadata, analysis, entry);
+  const title = entry.sequence != null ? `Foto ${entry.sequence} de ${total}` : `Captura ${position + 1} de ${total}`;
 
   return (
     <div className="detail">
       <header className="detail-header">
         <div>
-          <span className="eyebrow">{entry.sequence != null ? `Foto ${entry.sequence} de ${total}` : `Captura ${position + 1} de ${total}`}</span>
+          <span className="eyebrow">{title}</span>
           <h2>{fmt.time(entry.timestamp)}<small>{fmt.date(entry.timestamp)}</small></h2>
         </div>
         <div className="detail-nav">
@@ -121,7 +339,28 @@ export function CaptureDetail({
         </div>
       </header>
 
-      <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} />
+      <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} onExpand={() => setExpanded(true)} />
+      {(res.rgb || res.nir) && (
+        <div className="res-line mono">
+          {res.rgb && <span><b>RGB</b> {res.rgb}</span>}
+          {res.nir && <span><b>NIR</b> {res.nir}</span>}
+          {res.crop && <span title="Região coberta pelas duas câmeras, usada no NDVI"><b>NDVI</b> {res.crop}</span>}
+        </div>
+      )}
+      {expanded && (
+        <Lightbox
+          entry={entry}
+          analysis={analysis}
+          metadata={metadata}
+          title={title}
+          selectedHotspot={selectedHotspot}
+          onSelectHotspot={onSelectHotspot}
+          onStep={onStep}
+          canPrev={position > 0}
+          canNext={position < total - 1}
+          onClose={() => setExpanded(false)}
+        />
+      )}
 
       {!entry.survey && entry.status === "processed" && (
         <div className="notice"><Icon name="alert" size={14} />Fora do levantamento: {entry.flags.join(", ")}. Não entra no mapa, nos focos nem nas médias.</div>
@@ -138,7 +377,7 @@ export function CaptureDetail({
         <Stat label="NDVI médio" value={fmt.signed(entry.ndvi?.mean ?? null)} accent={entry.ndvi ? ndviColor(entry.ndvi.mean) : undefined} icon="leaf" />
         <Stat label="Vegetação" value={fmt.percent(entry.ndvi?.vegetation_fraction ?? null)} icon="layers" />
         <Stat label="Focos" value={entry.status === "processed" ? entry.hotspots.length : "—"} icon="target" />
-        <Stat label="Resolução" value={fmt.number(entry.gsdCm, 1)} unit="cm/px" icon="scan" />
+        <Stat label="GSD" value={fmt.number(entry.gsdCm, 1)} unit="cm/px" icon="scan" />
       </div>
 
       <div className="tabs" role="tablist">
@@ -194,30 +433,7 @@ export function CaptureDetail({
           )
         )}
 
-        {tab === "telemetria" && (
-          <>
-            <div className="instruments">
-              <AttitudeIndicator roll={orientation?.roll_deg ?? null} pitch={orientation?.pitch_deg ?? null} />
-              <Compass heading={orientation?.yaw_deg ?? null} />
-            </div>
-            <dl className="kv">
-              <div><dt>Norte</dt><dd className="mono">{fmt.number(pos?.north_m, 1)} m</dd></div>
-              <div><dt>Leste</dt><dd className="mono">{fmt.number(pos?.east_m, 1)} m</dd></div>
-              <div><dt>Altura</dt><dd className="mono">{fmt.number(pos?.height_m, 1)} m</dd></div>
-              <div>
-                <dt>Fonte da posição</dt>
-                <dd className={`mono ${pos?.source === "imu" ? "warn-text" : ""}`}>
-                  {pos?.source === "imu" ? "só IMU (sem GPS)" : pos?.source === "gps+imu" ? "GPS + IMU" : "—"}
-                  {pos?.sigma_m != null ? ` · ±${fmt.number(pos.sigma_m, 1)} m` : ""}
-                </dd>
-              </div>
-              <div><dt>Distância da estação</dt><dd className="mono">{pos?.north_m != null && pos.east_m != null ? `${fmt.number(Math.hypot(pos.north_m, pos.east_m), 1)} m` : "—"}</dd></div>
-              {extra.map(([k, v]) => (
-                <div key={k}><dt>{k}</dt><dd className="mono small">{typeof v === "number" ? fmt.number(v, 3) : v === null ? "—" : String(v)}</dd></div>
-              ))}
-            </dl>
-          </>
-        )}
+        {tab === "telemetria" && <Telemetry entry={entry} metadata={metadata} />}
 
         {tab === "arquivos" && (
           <div className="file-grid">
