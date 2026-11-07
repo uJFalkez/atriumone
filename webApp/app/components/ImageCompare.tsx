@@ -164,15 +164,7 @@ export function ImageCompare({
           if (!expanded) onExpand?.();
           else setView(IDENTITY);
         }}
-        onKeyDown={(event) => {
-          if (mode !== "compare") return;
-          if (event.key === "ArrowLeft") setSplit((s) => Math.max(0, s - 0.05));
-          if (event.key === "ArrowRight") setSplit((s) => Math.min(1, s + 0.05));
-        }}
-        tabIndex={mode === "compare" ? 0 : -1}
-        role={mode === "compare" ? "slider" : undefined}
-        aria-label={mode === "compare" ? "Comparação RGB e NDVI" : undefined}
-        aria-valuenow={mode === "compare" ? Math.round(split * 100) : undefined}
+        aria-label={mode === "compare" ? "Comparação RGB e NDVI: arraste para mover a divisória" : undefined}
       >
         <div className="viewer-canvas" style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${view.s})` }}>
           <img

@@ -268,6 +268,8 @@ export function CaptureDetail({
   selectedHotspot,
   onSelectHotspot,
   onStep,
+  expanded,
+  onExpandedChange,
   onClose,
 }: {
   entry: EntrySummary;
@@ -276,12 +278,14 @@ export function CaptureDetail({
   selectedHotspot: number | null;
   onSelectHotspot: (id: number) => void;
   onStep: (delta: number) => void;
+  /** Fica no Dashboard: este componente é recriado a cada foto. */
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   onClose: () => void;
 }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [metadata, setMetadata] = useState<Json | null>(null);
   const [tab, setTab] = useState<Tab>("analise");
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,7 +315,7 @@ export function CaptureDetail({
 
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest("input, textarea, [role=slider]")) return;
+      if ((event.target as HTMLElement).closest("input, textarea, select")) return;
       if (event.key === "ArrowLeft") onStep(-1);
       if (event.key === "ArrowRight") onStep(1);
       if (event.key === "Escape") onClose();
@@ -339,7 +343,7 @@ export function CaptureDetail({
         </div>
       </header>
 
-      <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} onExpand={() => setExpanded(true)} />
+      <ImageCompare entry={entry} analysis={analysis} selectedHotspot={selectedHotspot} onSelectHotspot={onSelectHotspot} onExpand={() => onExpandedChange(true)} />
       {(res.rgb || res.nir) && (
         <div className="res-line mono">
           {res.rgb && <span><b>RGB</b> {res.rgb}</span>}
@@ -358,7 +362,7 @@ export function CaptureDetail({
           onStep={onStep}
           canPrev={position > 0}
           canNext={position < total - 1}
-          onClose={() => setExpanded(false)}
+          onClose={() => onExpandedChange(false)}
         />
       )}
 

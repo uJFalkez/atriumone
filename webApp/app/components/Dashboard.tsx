@@ -88,6 +88,7 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
   const [missionId, setMissionId] = useState<string | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [hotspot, setHotspot] = useState<HotspotRef | null>(null);
+  const [expanded, setExpanded] = useState(false); // visualizador ampliado (sobrevive à troca de foto)
   const [focusKey, setFocusKey] = useState(0);
 
   const [showHotspots, setShowHotspots] = useState(true);
@@ -364,7 +365,9 @@ export default function Dashboard({ initial }: { initial: DataPayload }) {
               selectedHotspot={hotspot?.entryId === entry.id ? hotspot.id : null}
               onSelectHotspot={(id) => selectHotspot({ entryId: entry.id, id }, true)}
               onStep={step}
-              onClose={() => selectEntry(null)}
+              expanded={expanded}
+              onExpandedChange={setExpanded}
+              onClose={() => { setExpanded(false); selectEntry(null); }}
             />
           ) : mission ? (
             <MissionOverview
